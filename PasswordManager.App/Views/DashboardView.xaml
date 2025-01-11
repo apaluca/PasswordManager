@@ -1,0 +1,130 @@
+﻿<UserControl x:Class="PasswordManager.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" 
+                    Orientation="Horizontal" 
+                    Margin="0,0,0,20">
+            <TextBlock Text="Dashboard" 
+                       FontSize="24" 
+                       VerticalAlignment="Center"/>
+            <Button Content="Refresh" 
+                    Command="{Binding RefreshCommand}"
+                    Margin="20,0,0,0"
+                    Padding="10,5"/>
+            <Button Content="Add Password" 
+                    Command="{Binding AddPasswordCommand}"
+                    Margin="10,0,0,0"
+                    Padding="10,5"/>
+        </StackPanel>
+
+        <!-- Stats Section -->
+        <WrapPanel Grid.Row="1" Margin="0,0,0,20">
+            <Border Background="#E3F2FD" 
+                    CornerRadius="5" 
+                    Padding="15" 
+                    Margin="0,0,10,10"
+                    Width="200">
+                <StackPanel>
+                    <TextBlock Text="Total Passwords" 
+                             FontWeight="Bold"/>
+                    <TextBlock Text="{Binding TotalPasswords}" 
+                             FontSize="24"/>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#E8F5E9" 
+                    CornerRadius="5" 
+                    Padding="15" 
+                    Margin="0,0,10,10"
+                    Width="200"
+                    Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Failed Login Attempts (24h)" 
+                             FontWeight="Bold"/>
+                    <TextBlock Text="{Binding FailedLoginAttempts}" 
+                             FontSize="24"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Recent Passwords -->
+            <GroupBox Header="Recent Passwords" Grid.Column="0">
+                <ListView ItemsSource="{Binding RecentPasswords}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SiteName}" 
+                                         FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Username}" 
+                                         Foreground="Gray"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </GroupBox>
+
+            <GridSplitter Grid.Column="1" 
+                         Width="5" 
+                         HorizontalAlignment="Center"
+                         Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+            <!-- Admin/IT Section -->
+            <GroupBox Header="System Activity" 
+                     Grid.Column="2"
+                     Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TabControl>
+                    <TabItem Header="Login Attempts">
+                        <ListView ItemsSource="{Binding RecentLoginAttempts}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock>
+                                            <Run Text="{Binding Username}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding AttemptDate, StringFormat=\{0:g\}}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding IsSuccessful, Converter={StaticResource BooleanToSuccessConverter}}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </TabItem>
+                    <TabItem Header="Audit Log">
+                        <ListView ItemsSource="{Binding RecentAuditLogs}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock>
+                                            <Run Text="{Binding ActionDate, StringFormat=\{0:g\}}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding Action}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding Details}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </TabItem>
+                </TabControl>
+            </GroupBox>
+        </Grid>
+    </Grid>
+</UserControl>

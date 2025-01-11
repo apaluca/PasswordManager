@@ -1,0 +1,25 @@
+﻿<Window x:Class="PasswordManager.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Password Manager" Height="450" Width="800"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" 
+                    Background="#F0F0F0" 
+                    Padding="10">
+            <TextBlock Text="{Binding WelcomeMessage}" 
+                       VerticalAlignment="Center"/>
+            <Button Content="Logout" 
+                    Command="{Binding LogoutCommand}"
+                    Margin="20,0,0,0"/>
+        </StackPanel>
+
+        <ContentControl Grid.Row="1" 
+                       Content="{Binding CurrentView}"/>
+    </Grid>
+</Window>
