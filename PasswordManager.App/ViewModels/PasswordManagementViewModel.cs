@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -24,6 +25,7 @@ namespace PasswordManager.App.ViewModels
                 private readonly IEncryptionService _encryptionService;
                 private readonly IDialogService _dialogService;
                 private readonly IPasswordStrengthService _passwordStrengthService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 public ObservableCollection<StoredPasswordModel> Passwords { get; private set; }
 
@@ -74,13 +76,15 @@ namespace PasswordManager.App.ViewModels
                     ISecurityService securityService,
                     IEncryptionService encryptionService,
                     IDialogService dialogService,
-                    IPasswordStrengthService passwordStrengthService)
+                    IPasswordStrengthService passwordStrengthService,
+                    IAuditLogRepository auditLogRepository)
                 {
                         _passwordRepository = passwordRepository;
                         _securityService = securityService;
                         _encryptionService = encryptionService;
                         _dialogService = dialogService;
                         _passwordStrengthService = passwordStrengthService;
+                        _auditLogRepository = auditLogRepository;
 
                         Passwords = new ObservableCollection<StoredPasswordModel>();
 
@@ -181,7 +185,8 @@ namespace PasswordManager.App.ViewModels
                             _securityService,
                             _encryptionService,
                             _dialogService,
-                            _passwordStrengthService);
+                            _passwordStrengthService,
+                            _auditLogRepository);
 
                         var window = new PasswordEntryWindow
                         {
@@ -208,7 +213,7 @@ namespace PasswordManager.App.ViewModels
                                     _encryptionService,
                                     _dialogService,
                                     _passwordStrengthService,
-                                    null,
+                                    _auditLogRepository,
                                     SelectedPassword
                                 );
 
@@ -240,6 +245,11 @@ namespace PasswordManager.App.ViewModels
                                 try
                                 {
                                         _passwordRepository.Delete(SelectedPassword.Id);
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_PasswordDeleted",
+                                            $"Deleted stored password for site: {SelectedPassword.SiteName}",
+                                            "localhost");
                                         LoadPasswords();
                                         _dialogService.ShowMessage("Password deleted successfully.");
                                 }
@@ -288,6 +298,11 @@ namespace PasswordManager.App.ViewModels
                                 {
                                         string decryptedPassword = _encryptionService.Decrypt(password.EncryptedPassword);
                                         Clipboard.SetText(decryptedPassword);
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_PasswordCopied",
+                                            $"Password copied for site: {password.SiteName}",
+                                            "localhost");
                                         _dialogService.ShowMessage("Password copied to clipboard!");
 
                                         // Clear clipboard after 30 seconds

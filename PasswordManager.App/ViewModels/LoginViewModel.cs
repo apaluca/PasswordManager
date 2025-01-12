@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using PasswordManager.Core.Services;
 using PasswordManager.Data.DataContext;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -20,6 +21,7 @@ namespace PasswordManager.App.ViewModels
                 private readonly ILoginAttemptRepository _loginAttemptRepository;
                 private readonly IDialogService _dialogService;
                 private readonly INavigationService _navigationService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 private string _username;
                 private string _password;
@@ -71,13 +73,15 @@ namespace PasswordManager.App.ViewModels
                     ISecurityService securityService,
                     ILoginAttemptRepository loginAttemptRepository,
                     IDialogService dialogService,
-                    INavigationService navigationService)
+                    INavigationService navigationService,
+                    IAuditLogRepository auditLogRepository)
                 {
                         _userRepository = userRepository;
                         _securityService = securityService;
                         _loginAttemptRepository = loginAttemptRepository;
                         _dialogService = dialogService;
                         _navigationService = navigationService;
+                        _auditLogRepository = auditLogRepository;
 
                         LoginCommand = new RelayCommand(ExecuteLogin, CanExecuteLogin);
                         VerifyTwoFactorCommand = new RelayCommand(ExecuteVerifyTwoFactor, CanExecuteVerifyTwoFactor);
@@ -99,11 +103,16 @@ namespace PasswordManager.App.ViewModels
 
                                 _currentUser = _userRepository.GetByUsername(Username);
                                 bool isValid = _currentUser != null &&
-                                             _securityService.VerifyPassword(Password, _currentUser.PasswordHash);
+                                              _securityService.VerifyPassword(Password, _currentUser.PasswordHash);
 
                                 if (!isValid)
                                 {
                                         _loginAttemptRepository.RecordAttempt(Username, false, "localhost", "WPF Client");
+                                        _auditLogRepository.LogAction(
+                                            null,
+                                            "Security_FailedLogin",
+                                            $"Failed login attempt for username: {Username}",
+                                            "localhost");
                                         SetError("Invalid username or password");
                                         IsBusy = false;
                                         return;
@@ -112,6 +121,11 @@ namespace PasswordManager.App.ViewModels
                                 if (_currentUser.TwoFactorEnabled ?? false)
                                 {
                                         IsTwoFactorRequired = true;
+                                        _auditLogRepository.LogAction(
+                                            _currentUser.UserId,
+                                            "Security_2FARequired",
+                                            $"2FA verification required for user {Username}",
+                                            "localhost");
                                         IsBusy = false;
                                         return;
                                 }
@@ -130,10 +144,16 @@ namespace PasswordManager.App.ViewModels
                         try
                         {
                                 _loginAttemptRepository.RecordAttempt(
-                                    Username,
-                                    true,
-                                    "localhost",
-                                    "WPF Client");
+                                            Username,
+                                            true,
+                                            "localhost",
+                                            "WPF Client");
+
+                                _auditLogRepository.LogAction(
+                                            _currentUser.UserId,
+                                            "Security_SuccessfulLogin",
+                                            $"Successful login for user {Username}",
+                                            "localhost");
 
                                 _userRepository.SetLastLoginDate(_currentUser.UserId);
 

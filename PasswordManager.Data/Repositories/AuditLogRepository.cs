@@ -32,6 +32,30 @@ namespace PasswordManager.Data.Repositories
                         _context.SubmitChanges();
                 }
 
+                public IEnumerable<AuditLog> GetSystemActivityLogs(int count)
+                {
+                        return _context.AuditLogs
+                            .Where(l =>
+                                l.Action.Contains("User") ||      // User management actions
+                                l.Action.Contains("Role") ||      // Role changes
+                                l.Action.Contains("Password") ||  // Password resets
+                                l.Action.Contains("2FA"))         // 2FA changes
+                            .OrderByDescending(l => l.ActionDate)
+                            .Take(count);
+                }
+
+                public IEnumerable<AuditLog> GetSecurityActivityLogs(int count)
+                {
+                        return _context.AuditLogs
+                            .Where(l =>
+                                l.Action.Contains("Login") ||     // Login attempts
+                                l.Action.Contains("Failed") ||    // Failed actions
+                                l.Action.Contains("Access") ||    // Access attempts
+                                l.Action.Contains("Security"))    // Security changes
+                            .OrderByDescending(l => l.ActionDate)
+                            .Take(count);
+                }
+
                 public IEnumerable<AuditLog> GetUserLogs(int userId)
                 {
                         return _context.AuditLogs

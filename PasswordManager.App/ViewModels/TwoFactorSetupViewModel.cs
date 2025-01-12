@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.IO;
 using System.Net.Http;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -20,6 +21,7 @@ namespace PasswordManager.App.ViewModels
                 private readonly ISecurityService _securityService;
                 private readonly IUserRepository _userRepository;
                 private readonly IDialogService _dialogService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 private string _setupKey;
                 private string _verificationCode;
@@ -75,11 +77,13 @@ namespace PasswordManager.App.ViewModels
                 public TwoFactorSetupViewModel(
                     ISecurityService securityService,
                     IUserRepository userRepository,
-                    IDialogService dialogService)
+                    IDialogService dialogService,
+                    IAuditLogRepository auditLogRepository)
                 {
                         _securityService = securityService;
                         _userRepository = userRepository;
                         _dialogService = dialogService;
+                        _auditLogRepository = auditLogRepository;
 
                         VerifyCommand = new RelayCommand(ExecuteVerify, CanExecuteVerify);
                         GenerateNewKeyCommand = new RelayCommand(_ => GenerateNewKey());
@@ -120,7 +124,13 @@ namespace PasswordManager.App.ViewModels
                                 {
                                         _userRepository.EnableTwoFactor(
                                             SessionManager.CurrentUser.UserId,
-                                            SetupKey);
+                                        SetupKey);
+
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "Security_2FAEnabled",
+                                            "Two-factor authentication enabled successfully",
+                                            "localhost");
 
                                         IsVerified = true;
                                         _dialogService.ShowMessage(
@@ -136,6 +146,11 @@ namespace PasswordManager.App.ViewModels
                         }
                         else
                         {
+                                _auditLogRepository.LogAction(
+                                    SessionManager.CurrentUser.UserId,
+                                    "Security_2FAVerificationFailed",
+                                    "Failed verification attempt for 2FA setup",
+                                    "localhost");
                                 _dialogService.ShowError(
                                     "Invalid verification code. Please try again.");
                                 VerificationCode = string.Empty;

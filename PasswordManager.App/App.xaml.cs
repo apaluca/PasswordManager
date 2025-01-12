@@ -77,6 +77,7 @@ namespace PasswordManager.App
                         services.AddTransient<PasswordManagementViewModel>();
                         services.AddTransient<AdminDashboardViewModel>();
                         services.AddTransient<ITDashboardViewModel>();
+                        services.AddTransient<TwoFactorSetupViewModel>();
 
                         // Register Views
                         services.AddTransient<LoginWindow>();

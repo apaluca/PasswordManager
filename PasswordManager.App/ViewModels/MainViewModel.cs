@@ -126,6 +126,12 @@ namespace PasswordManager.App.ViewModels
                 {
                         try
                         {
+                                _auditLogRepository.LogAction(
+                                    SessionManager.CurrentUser.UserId,
+                                    "Security_Logout",
+                                    $"User {SessionManager.CurrentUser.Username} logged out",
+                                    "localhost");
+                                
                                 CurrentViewModel = null;
                                 SessionManager.Logout();
                                 _navigationService.NavigateToLogin();
@@ -142,7 +148,8 @@ namespace PasswordManager.App.ViewModels
                             _userRepository,
                             _securityService,
                             _passwordStrengthService,
-                            _dialogService);
+                            _dialogService,
+                            _auditLogRepository);
 
                         var window = new ChangePasswordWindow
                         {
@@ -204,7 +211,8 @@ namespace PasswordManager.App.ViewModels
                                             _securityService,
                                             _encryptionService,
                                             _dialogService,
-                                            _passwordStrengthService);
+                                            _passwordStrengthService,
+                                            _auditLogRepository);
                                         break;
 
                                 case "UserManagement":
@@ -223,7 +231,8 @@ namespace PasswordManager.App.ViewModels
                                         {
                                                 CurrentViewModel = new SecurityMonitoringViewModel(
                                                     _loginAttemptRepository,
-                                                    _dialogService);
+                                                    _dialogService,
+                                                    _auditLogRepository);
                                         }
                                         break;
                         }
@@ -234,7 +243,8 @@ namespace PasswordManager.App.ViewModels
                         var viewModel = new TwoFactorSetupViewModel(
                             _securityService,
                             _userRepository,
-                            _dialogService);
+                            _dialogService,
+                            _auditLogRepository);
 
                         var window = new TwoFactorSetupWindow
                         {
@@ -263,6 +273,11 @@ namespace PasswordManager.App.ViewModels
                                         try
                                         {
                                                 _userRepository.DisableTwoFactor(SessionManager.CurrentUser.UserId);
+                                                _auditLogRepository.LogAction(
+                                                    SessionManager.CurrentUser.UserId,
+                                                    "Security_2FADisabled",
+                                                    "Two-factor authentication disabled",
+                                                    "localhost");
                                                 SessionManager.CurrentUser.TwoFactorEnabled = false;
                                                 OnPropertyChanged(nameof(IsTwoFactorEnabled));
                                                 _dialogService.ShowMessage("Two-factor authentication has been disabled.");
@@ -278,7 +293,8 @@ namespace PasswordManager.App.ViewModels
                                 var viewModel = new TwoFactorSetupViewModel(
                                     _securityService,
                                     _userRepository,
-                                    _dialogService);
+                                    _dialogService,
+                                    _auditLogRepository);
 
                                 var window = new TwoFactorSetupWindow
                                 {

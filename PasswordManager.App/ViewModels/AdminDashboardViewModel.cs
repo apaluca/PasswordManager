@@ -93,14 +93,14 @@ namespace PasswordManager.App.ViewModels
                                 Users.Add(user);
                         }
 
-                        var activities = _auditLogRepository.GetRecentLogs(20)
-                            .Select(log => new AuditLogModel
-                            {
-                                    Username = log.User != null ? log.User.Username : "System",
-                                    Action = log.Action,
-                                    Details = log.Details,
-                                    ActionDate = log.ActionDate ?? DateTime.Now
-                            }).ToList();
+                        var activities = _auditLogRepository.GetSystemActivityLogs(20)
+                                    .Select(log => new AuditLogModel
+                                    {
+                                            Username = log.User != null ? log.User.Username : "System",
+                                            Action = log.Action,
+                                            Details = log.Details,
+                                            ActionDate = log.ActionDate ?? DateTime.Now
+                                    }).ToList();
 
                         RecentActivity.Clear();
                         foreach (var activity in activities)
@@ -125,6 +125,11 @@ namespace PasswordManager.App.ViewModels
                                 try
                                 {
                                         _userRepository.UpdateUserStatus(SelectedUser.UserId, !SelectedUser.IsActive);
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_StatusChange",
+                                            $"User {SelectedUser.Username} {(SelectedUser.IsActive ? "deactivated" : "activated")}",
+                                            "localhost");
                                         LoadData();
                                         _dialogService.ShowMessage("User status updated successfully.");
                                 }
@@ -145,6 +150,11 @@ namespace PasswordManager.App.ViewModels
                                 {
                                         string newPassword = _securityService.GenerateStrongPassword();
                                         _userRepository.ChangePassword(SelectedUser.UserId, newPassword);
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_PasswordReset",
+                                            $"Password reset for user {SelectedUser.Username}",
+                                            "localhost");
                                         _dialogService.ShowMessage(
                                             string.Format("Password has been reset. New password: {0}\n\nPlease securely communicate this to the user.",
                                                 newPassword));
@@ -214,6 +224,12 @@ namespace PasswordManager.App.ViewModels
                                 string password = _securityService.GenerateStrongPassword();
 
                                 _userRepository.Create(username, password, email, selectedRoleId.Value);
+                                _auditLogRepository.LogAction(
+                                    SessionManager.CurrentUser.UserId,
+                                    "User_Created",
+                                    $"New user created: {username} with role {AvailableRoles.First(r => r.RoleId == selectedRoleId.Value).RoleName}",
+                                    "localhost");
+                                LoadData();
                                 LoadData(); // Refresh the users list
 
                                 _dialogService.ShowMessage(

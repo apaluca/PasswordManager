@@ -157,7 +157,7 @@ namespace PasswordManager.App.ViewModels
                         IEncryptionService encryptionService,
                         IDialogService dialogService,
                         IPasswordStrengthService passwordStrengthService,
-                        IAuditLogRepository auditLogRepository = null,
+                        IAuditLogRepository auditLogRepository,
                         StoredPasswordModel existingPassword = null)
                 {
                         _passwordRepository = passwordRepository;
@@ -231,18 +231,38 @@ namespace PasswordManager.App.ViewModels
                                         ModifiedDate = DateTime.Now
                                 };
 
-                                if (IsEditing)
+                                // Handle expiration date logic
+                                if (HasExpirationDate && ExpirationDate.HasValue)
                                 {
-                                        // For edited passwords, we keep the original CreatedDate
-                                        _passwordRepository.Update(PasswordMapper.ToModel(passwordEntry));
+                                        // Set CreatedDate to 3 months before expiration
+                                        passwordEntry.CreatedDate = ExpirationDate.Value.AddMonths(-3);
                                 }
                                 else
                                 {
-                                        // For new passwords, set CreatedDate
-                                        passwordEntry.CreatedDate = HasExpirationDate ?
-                                            ExpirationDate?.AddMonths(-3) : // Work backwards from desired expiration
-                                            DateTime.Now; // No expiration
+                                        // If no expiration date, set CreatedDate to now for new passwords
+                                        if (!IsEditing)
+                                        {
+                                                passwordEntry.CreatedDate = DateTime.Now;
+                                        }
+                                }
+
+                                if (IsEditing)
+                                {
+                                        _passwordRepository.Update(PasswordMapper.ToModel(passwordEntry));
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_PasswordUpdated",
+                                            $"Updated stored password for site: {SiteName}",
+                                            "localhost");
+                                }
+                                else
+                                {
                                         _passwordRepository.Create(PasswordMapper.ToModel(passwordEntry));
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "User_PasswordCreated",
+                                            $"Created new stored password for site: {SiteName}",
+                                            "localhost");
                                 }
 
                                 RequestClose?.Invoke(this, EventArgs.Empty);

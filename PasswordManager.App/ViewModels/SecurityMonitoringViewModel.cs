@@ -9,6 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using PasswordManager.Core.Services;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -16,6 +18,7 @@ namespace PasswordManager.App.ViewModels
         {
                 private readonly ILoginAttemptRepository _loginAttemptRepository;
                 private readonly IDialogService _dialogService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 public ObservableCollection<LoginAttemptModel> LoginAttempts { get; private set; }
                 public ObservableCollection<IPAnalysisModel> IPAnalysis { get; private set; }
@@ -47,12 +50,12 @@ namespace PasswordManager.App.ViewModels
                 }
 
                 public List<string> TimeRanges { get; } = new List<string>
-        {
-            "Last Hour",
-            "Last 24 Hours",
-            "Last 7 Days",
-            "Last 30 Days"
-        };
+                {
+                    "Last Hour",
+                    "Last 24 Hours",
+                    "Last 7 Days",
+                    "Last 30 Days"
+                };
 
                 private int _totalFailedAttempts;
                 public int TotalFailedAttempts
@@ -81,10 +84,12 @@ namespace PasswordManager.App.ViewModels
 
                 public SecurityMonitoringViewModel(
                     ILoginAttemptRepository loginAttemptRepository,
-                    IDialogService dialogService)
+                    IDialogService dialogService,
+                    IAuditLogRepository auditLogRepository)
                 {
                         _loginAttemptRepository = loginAttemptRepository;
                         _dialogService = dialogService;
+                        _auditLogRepository = auditLogRepository;
 
                         LoginAttempts = new ObservableCollection<LoginAttemptModel>();
                         IPAnalysis = new ObservableCollection<IPAnalysisModel>();
@@ -215,6 +220,11 @@ namespace PasswordManager.App.ViewModels
                         {
                                 // In a real implementation, this would add the IP to a blocklist
                                 _dialogService.ShowMessage($"IP address {FilterIPAddress} has been blocked.");
+                                _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "Security_IPBlocked",
+                                            $"Blocked IP address: {FilterIPAddress}",
+                                            "localhost");
                         }
                 }
         }

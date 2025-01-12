@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -18,6 +19,7 @@ namespace PasswordManager.App.ViewModels
                 private readonly ISecurityService _securityService;
                 private readonly IPasswordStrengthService _passwordStrengthService;
                 private readonly IDialogService _dialogService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 private string _currentPassword;
                 private string _newPassword;
@@ -72,12 +74,14 @@ namespace PasswordManager.App.ViewModels
                     IUserRepository userRepository,
                     ISecurityService securityService,
                     IPasswordStrengthService passwordStrengthService,
-                    IDialogService dialogService)
+                    IDialogService dialogService,
+                    IAuditLogRepository auditLogRepository)
                 {
                         _userRepository = userRepository;
                         _securityService = securityService;
                         _passwordStrengthService = passwordStrengthService;
                         _dialogService = dialogService;
+                        _auditLogRepository = auditLogRepository;
 
                         ChangePasswordCommand = new RelayCommand(ExecuteChangePassword, CanExecuteChangePassword);
                         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(this, EventArgs.Empty));
@@ -102,7 +106,11 @@ namespace PasswordManager.App.ViewModels
                                     Core.Services.SessionManager.CurrentUser.Username,
                                     CurrentPassword))
                                 {
-                                        SetError("Current password is incorrect");
+                                        _auditLogRepository.LogAction(
+                                            SessionManager.CurrentUser.UserId,
+                                            "Security_FailedPasswordChange",
+                                            "Failed password change attempt - incorrect current password",
+                                            "localhost"); SetError("Current password is incorrect");
                                         return;
                                 }
 
@@ -110,6 +118,12 @@ namespace PasswordManager.App.ViewModels
                                 _userRepository.ChangePassword(
                                     Core.Services.SessionManager.CurrentUser.UserId,
                                     NewPassword);
+
+                                _auditLogRepository.LogAction(
+                                    SessionManager.CurrentUser.UserId,
+                                    "User_PasswordChanged",
+                                    "User successfully changed their password",
+                                    "localhost");
 
                                 _dialogService.ShowMessage("Password changed successfully!");
                                 RequestClose?.Invoke(this, EventArgs.Empty);

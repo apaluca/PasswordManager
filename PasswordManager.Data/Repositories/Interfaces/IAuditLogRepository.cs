@@ -13,5 +13,7 @@ namespace PasswordManager.Data.Repositories.Interfaces
                 IEnumerable<AuditLog> GetUserLogs(int userId);
                 IEnumerable<AuditLog> GetRecentLogs(int count);
                 IEnumerable<AuditLog> GetLogsByDateRange(DateTime start, DateTime end);
+                IEnumerable<AuditLog> GetSystemActivityLogs(int count);
+                IEnumerable<AuditLog> GetSecurityActivityLogs(int count);
         }
 }

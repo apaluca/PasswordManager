@@ -29,9 +29,6 @@ namespace PasswordManager.App.Views
                         {
                                 MessageBox.Show("DataContext is null!");
                         }
-                        else
-                        {
-                        }
                 }
         }
 }
