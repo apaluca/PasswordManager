@@ -11,6 +11,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using PasswordManager.Core.Models;
+using PasswordManager.Data.DataContext;
+using System.Runtime.Remoting.Contexts;
+using System.Windows.Controls;
+using System.Windows;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -20,6 +24,18 @@ namespace PasswordManager.App.ViewModels
                 private readonly IAuditLogRepository _auditLogRepository;
                 private readonly IDialogService _dialogService;
                 private readonly ISecurityService _securityService;
+                private IEnumerable<Role> _availableRoles;
+                public IEnumerable<Role> AvailableRoles
+                {
+                        get
+                        {
+                                if (_availableRoles == null)
+                                {
+                                        _availableRoles = _userRepository.GetAllRoles();
+                                }
+                                return _availableRoles;
+                        }
+                }
 
                 public ObservableCollection<UserModel> Users { get; private set; }
                 public ObservableCollection<AuditLogModel> RecentActivity { get; private set; }
@@ -34,6 +50,7 @@ namespace PasswordManager.App.ViewModels
                 public ICommand DeactivateUserCommand { get; private set; }
                 public ICommand ResetPasswordCommand { get; private set; }
                 public ICommand RefreshCommand { get; private set; }
+                public ICommand AddUserCommand { get; private set; }
 
                 public AdminDashboardViewModel(
                     IUserRepository userRepository,
@@ -49,6 +66,7 @@ namespace PasswordManager.App.ViewModels
                         Users = new ObservableCollection<UserModel>();
                         RecentActivity = new ObservableCollection<AuditLogModel>();
 
+                        AddUserCommand = new RelayCommand(_ => ExecuteAddUser(null));
                         DeactivateUserCommand = new RelayCommand(ExecuteDeactivateUser, CanExecuteUserAction);
                         ResetPasswordCommand = new RelayCommand(ExecuteResetPassword, CanExecuteUserAction);
                         RefreshCommand = new RelayCommand(obj => LoadData());
@@ -135,6 +153,79 @@ namespace PasswordManager.App.ViewModels
                                 {
                                         _dialogService.ShowError("Failed to reset password: " + ex.Message);
                                 }
+                        }
+                }
+
+                private void ExecuteAddUser(object parameter)
+                {
+                        try
+                        {
+                                string username = _dialogService.ShowPrompt("Enter username:");
+                                if (string.IsNullOrWhiteSpace(username)) return;
+
+                                string email = _dialogService.ShowPrompt("Enter email:");
+                                if (string.IsNullOrWhiteSpace(email)) return;
+
+                                // Show role selection dialog
+                                var roleDialog = new Window
+                                {
+                                        Title = "Select Role",
+                                        Width = 300,
+                                        Height = 200,
+                                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                                        Owner = Application.Current.MainWindow
+                                };
+
+                                var panel = new StackPanel { Margin = new Thickness(10) };
+                                var label = new TextBlock { Text = "Select user role:", Margin = new Thickness(0, 0, 0, 5) };
+                                var comboBox = new ComboBox
+                                {
+                                        Margin = new Thickness(0, 0, 0, 10),
+                                        ItemsSource = AvailableRoles,
+                                        DisplayMemberPath = "RoleName",
+                                        SelectedValuePath = "RoleId"
+                                };
+                                var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+                                var okButton = new Button { Content = "OK", Width = 75, Height = 25, Margin = new Thickness(0, 0, 5, 0), IsEnabled = false };
+                                var cancelButton = new Button { Content = "Cancel", Width = 75, Height = 25 };
+
+                                // Enable OK button only when a role is selected
+                                comboBox.SelectionChanged += (s, e) => okButton.IsEnabled = comboBox.SelectedItem != null;
+
+                                buttonPanel.Children.Add(okButton);
+                                buttonPanel.Children.Add(cancelButton);
+                                panel.Children.Add(label);
+                                panel.Children.Add(comboBox);
+                                panel.Children.Add(buttonPanel);
+                                roleDialog.Content = panel;
+
+                                int? selectedRoleId = null;
+                                okButton.Click += (s, e) =>
+                                {
+                                        selectedRoleId = ((Role)comboBox.SelectedItem).RoleId;
+                                        roleDialog.DialogResult = true;
+                                };
+                                cancelButton.Click += (s, e) => roleDialog.DialogResult = false;
+
+                                if (roleDialog.ShowDialog() != true)
+                                        return;
+
+                                // Generate a temporary password
+                                string password = _securityService.GenerateStrongPassword();
+
+                                _userRepository.Create(username, password, email, selectedRoleId.Value);
+                                LoadData(); // Refresh the users list
+
+                                _dialogService.ShowMessage(
+                                    $"User created successfully!\n\n" +
+                                    $"Username: {username}\n" +
+                                    $"Role: {AvailableRoles.First(r => r.RoleId == selectedRoleId.Value).RoleName}\n" +
+                                    $"Temporary password: {password}\n\n" +
+                                    "Please share this password securely with the user.");
+                        }
+                        catch (Exception ex)
+                        {
+                                _dialogService.ShowError("Failed to create user: " + ex.Message);
                         }
                 }
         }

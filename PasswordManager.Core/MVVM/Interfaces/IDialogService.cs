@@ -11,5 +11,6 @@ namespace PasswordManager.Core.MVVM.Interfaces
                 void ShowMessage(string message, string title = "Information");
                 bool ShowConfirmation(string message, string title = "Confirm");
                 void ShowError(string message, string title = "Error");
+                string ShowPrompt(string message, string title = "Input Required");
         }
 }

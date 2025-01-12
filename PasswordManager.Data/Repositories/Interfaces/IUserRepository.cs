@@ -22,5 +22,6 @@ namespace PasswordManager.Data.Repositories.Interfaces
                 bool IsEmailTaken(string email);
                 IEnumerable<User> GetUsers();
                 void UpdateUserStatus(int userId, bool isActive);
+                IEnumerable<Role> GetAllRoles();
         }
 }

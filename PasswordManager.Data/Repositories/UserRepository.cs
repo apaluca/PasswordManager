@@ -127,5 +127,10 @@ namespace PasswordManager.Data.Repositories
                                 _context.SubmitChanges();
                         }
                 }
+
+                public IEnumerable<Role> GetAllRoles()
+                {
+                        return _context.Roles.ToList();
+                }
         }
 }

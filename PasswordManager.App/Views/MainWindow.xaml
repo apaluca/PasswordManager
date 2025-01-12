@@ -4,21 +4,28 @@
         xmlns:views="clr-namespace:PasswordManager.App.Views;assembly="
         xmlns:viewmodels="clr-namespace:PasswordManager.App.ViewModels;assembly="
         Title="Password Manager" 
-        Height="600" 
-        Width="1000"
+        Height="800" 
+        Width="1400"
         WindowStartupLocation="CenterScreen">
     <DockPanel>
         <!-- Top Bar -->
         <Border DockPanel.Dock="Top" 
-                Background="#F0F0F0" 
-                Padding="10">
+        Background="#F0F0F0" 
+        Padding="10">
             <DockPanel>
                 <Button DockPanel.Dock="Right" 
-                        Content="Logout" 
-                        Command="{Binding LogoutCommand}"
-                        Width="80"/>
+                Content="Logout" 
+                Command="{Binding LogoutCommand}"
+                Width="80"
+                Height="30"/>
+                <Button DockPanel.Dock="Right" 
+                Content="Change Password" 
+                Command="{Binding ChangePasswordCommand}"
+                Width="120"
+                Height="30"
+                Margin="0,0,10,0"/>
                 <TextBlock Text="{Binding WelcomeMessage}" 
-                          VerticalAlignment="Center"/>
+                  VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
@@ -42,7 +49,7 @@
                 <!-- Admin-only buttons -->
                 <Button Content="User Management" 
                         Command="{Binding NavigateCommand}"
-                        CommandParameter="Dashboard"
+                        CommandParameter="UserManagement"
                         Height="30"
                         Margin="0,5"
                         Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -50,7 +57,7 @@
                 <!-- IT Specialist-only buttons -->
                 <Button Content="Security Monitoring" 
                         Command="{Binding NavigateCommand}"
-                        CommandParameter="Dashboard"
+                        CommandParameter="SecurityMonitoring"
                         Height="30"
                         Margin="0,5"
                         Visibility="{Binding IsITSpecialist, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -71,6 +78,9 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type viewmodels:PasswordManagementViewModel}">
                     <views:PasswordManagementView/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type viewmodels:SecurityMonitoringViewModel}">
+                    <views:SecurityMonitoringView/>
                 </DataTemplate>
             </ContentControl.Resources>
         </ContentControl>

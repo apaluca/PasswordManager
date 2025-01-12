@@ -55,5 +55,12 @@ namespace PasswordManager.Data.Repositories
                             .OrderByDescending(la => la.AttemptDate)
                             .Take(count);
                 }
+
+                public IEnumerable<LoginAttempt> GetAttemptsByDateRange(DateTime startDate, DateTime endDate)
+                {
+                        return _context.LoginAttempts.Where(
+                            la => la.AttemptDate >= startDate &&
+                            la.AttemptDate <= endDate);
+                }
         }
 }

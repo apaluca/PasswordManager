@@ -1,0 +1,182 @@
+﻿<UserControl x:Class="PasswordManager.App.Views.SecurityMonitoringView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Security Monitoring and Analysis" 
+                      FontSize="24" 
+                      FontWeight="Bold"
+                      Margin="0,0,0,10"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Refresh" 
+                        Command="{Binding RefreshCommand}"
+                        Width="100"
+                        Height="30"
+                        Margin="0,0,10,0"/>
+                <Button Content="Export Report" 
+                        Command="{Binding ExportReportCommand}"
+                        Width="100"
+                        Height="30"
+                        Margin="0,0,10,0"/>
+                <Button Content="Block IP" 
+                        Command="{Binding BlockIPCommand}"
+                        Width="100"
+                        Height="30"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Filters -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,20">
+            <TextBlock Text="Time Range:" FontWeight="Bold" Margin="0,0,0,5"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <ComboBox SelectedItem="{Binding SelectedTimeRange}"
+                         ItemsSource="{Binding TimeRanges}"
+                         Width="150"
+                         Height="25"/>
+                <TextBlock Text="IP Address:" 
+                          FontWeight="Bold" 
+                          Margin="20,0,5,0"
+                          VerticalAlignment="Center"/>
+                <TextBox Text="{Binding FilterIPAddress, UpdateSourceTrigger=PropertyChanged}"
+                         Width="150"
+                         Height="25"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Main Content -->
+        <TabControl Grid.Row="2">
+            <!-- Login Attempts Analysis -->
+            <TabItem Header="Login Attempts Analysis">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Statistics -->
+                    <WrapPanel Grid.Row="0" Margin="0,10">
+                        <Border Background="#FFE6E6" 
+                                CornerRadius="5" 
+                                Padding="15" 
+                                Margin="0,0,10,0"
+                                Width="200">
+                            <StackPanel>
+                                <TextBlock Text="Failed Attempts" 
+                                         FontWeight="Bold"/>
+                                <TextBlock Text="{Binding TotalFailedAttempts}" 
+                                         FontSize="24"
+                                         Foreground="Red"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#E6FFE6" 
+                                CornerRadius="5" 
+                                Padding="15"
+                                Margin="0,0,10,0"
+                                Width="200">
+                            <StackPanel>
+                                <TextBlock Text="Unique IPs" 
+                                         FontWeight="Bold"/>
+                                <TextBlock Text="{Binding UniqueIPAddresses}" 
+                                         FontSize="24"
+                                         Foreground="Green"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#E6E6FF" 
+                                CornerRadius="5" 
+                                Padding="15"
+                                Width="200">
+                            <StackPanel>
+                                <TextBlock Text="Average Attempts per IP" 
+                                         FontWeight="Bold"/>
+                                <TextBlock Text="{Binding AverageAttemptsPerIP}" 
+                                         FontSize="24"
+                                         Foreground="Blue"/>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+
+                    <!-- Attempts List -->
+                    <DataGrid Grid.Row="1" 
+                             ItemsSource="{Binding LoginAttempts}"
+                             AutoGenerateColumns="False"
+                             IsReadOnly="True"
+                             Margin="0,10,0,0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Timestamp" 
+                                              Binding="{Binding AttemptDate, StringFormat={}{0:g}}"
+                                              Width="150"/>
+                            <DataGridTextColumn Header="Username" 
+                                              Binding="{Binding Username}"
+                                              Width="120"/>
+                            <DataGridTextColumn Header="IP Address" 
+                                              Binding="{Binding IPAddress}"
+                                              Width="120"/>
+                            <DataGridTextColumn Header="User Agent" 
+                                              Binding="{Binding UserAgent}"
+                                              Width="200"/>
+                            <DataGridTemplateColumn Header="Status" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding IsSuccessful, Converter={StaticResource BooleanToSuccessConverter}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSuccessful}" Value="False">
+                                                            <Setter Property="Foreground" Value="Red"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsSuccessful}" Value="True">
+                                                            <Setter Property="Foreground" Value="Green"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- IP Analysis -->
+            <TabItem Header="IP Analysis">
+                <DataGrid ItemsSource="{Binding IPAnalysis}"
+                         AutoGenerateColumns="False"
+                         IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="IP Address" 
+                                          Binding="{Binding IPAddress}"
+                                          Width="120"/>
+                        <DataGridTextColumn Header="Total Attempts" 
+                                          Binding="{Binding TotalAttempts}"
+                                          Width="100"/>
+                        <DataGridTextColumn Header="Failed Attempts" 
+                                          Binding="{Binding FailedAttempts}"
+                                          Width="100"/>
+                        <DataGridTextColumn Header="Success Rate" 
+                                          Binding="{Binding SuccessRate, StringFormat={}{0:P}}"
+                                          Width="100"/>
+                        <DataGridTextColumn Header="Last Attempt" 
+                                          Binding="{Binding LastAttempt, StringFormat={}{0:g}}"
+                                          Width="150"/>
+                        <DataGridTextColumn Header="Risk Level" 
+                                          Binding="{Binding RiskLevel}"
+                                          Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

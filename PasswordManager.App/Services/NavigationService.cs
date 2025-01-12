@@ -23,7 +23,11 @@ namespace PasswordManager.App.Services
 
                 public void NavigateToMain()
                 {
-                        var mainWindow = new MainWindow();
+                        var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+                        var mainWindow = new MainWindow
+                        {
+                                DataContext = mainViewModel
+                        };
                         var currentWindow = Application.Current.MainWindow;
 
                         Application.Current.MainWindow = mainWindow;

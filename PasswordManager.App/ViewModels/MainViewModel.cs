@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using PasswordManager.Core.MVVM.Interfaces;
 using PasswordManager.Data.Repositories.Interfaces;
+using System.Windows;
+using PasswordManager.App.Views;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -47,6 +49,7 @@ namespace PasswordManager.App.ViewModels
                 }
 
                 public ICommand LogoutCommand { get; private set; }
+                public ICommand ChangePasswordCommand { get; private set; }
                 public ICommand NavigateCommand { get; private set; }
 
                 public MainViewModel(
@@ -71,7 +74,9 @@ namespace PasswordManager.App.ViewModels
                         _passwordStrengthService = passwordStrengthService;
 
                         LogoutCommand = new RelayCommand(ExecuteLogout);
+                        ChangePasswordCommand = new RelayCommand(ExecuteChangePassword);
                         NavigateCommand = new RelayCommand(ExecuteNavigate);
+
 
                         NavigateToDefaultView();
                 }
@@ -80,11 +85,14 @@ namespace PasswordManager.App.ViewModels
                 {
                         if (IsAdministrator)
                         {
-                                CurrentViewModel = new AdminDashboardViewModel(
-                                    _userRepository,
+                                CurrentViewModel = new DashboardViewModel(
+                                    _passwordRepository,
+                                    _loginAttemptRepository,
                                     _auditLogRepository,
                                     _dialogService,
-                                    _securityService);
+                                    _securityService,
+                                    _encryptionService,
+                                    _passwordStrengthService);
                         }
                         else if (IsITSpecialist)
                         {
@@ -108,8 +116,39 @@ namespace PasswordManager.App.ViewModels
 
                 private void ExecuteLogout(object parameter)
                 {
-                        SessionManager.Logout();
-                        _navigationService.NavigateToLogin();
+                        try
+                        {
+                                CurrentViewModel = null;
+                                SessionManager.Logout();
+                                _navigationService.NavigateToLogin();
+                        }
+                        catch (Exception ex)
+                        {
+                                _dialogService.ShowError("Error during logout: " + ex.Message);
+                        }
+                }
+
+                private void ExecuteChangePassword(object parameter)
+                {
+                        var viewModel = new ChangePasswordViewModel(
+                            _userRepository,
+                            _securityService,
+                            _passwordStrengthService,
+                            _dialogService);
+
+                        var window = new ChangePasswordWindow
+                        {
+                                Owner = Application.Current.MainWindow,
+                                DataContext = viewModel
+                        };
+
+                        viewModel.RequestClose += (s, e) =>
+                        {
+                                window.DialogResult = true;
+                                window.Close();
+                        };
+
+                        window.ShowDialog();
                 }
 
                 private void ExecuteNavigate(object parameter)
@@ -120,8 +159,37 @@ namespace PasswordManager.App.ViewModels
                         switch (viewName)
                         {
                                 case "Dashboard":
-                                        NavigateToDefaultView();
+                                        if (IsAdministrator)
+                                        {
+                                                CurrentViewModel = new DashboardViewModel(
+                                                    _passwordRepository,
+                                                    _loginAttemptRepository,
+                                                    _auditLogRepository,
+                                                    _dialogService,
+                                                    _securityService,
+                                                    _encryptionService,
+                                                    _passwordStrengthService);
+                                        }
+                                        else if (IsITSpecialist)
+                                        {
+                                                CurrentViewModel = new ITDashboardViewModel(
+                                                    _loginAttemptRepository,
+                                                    _auditLogRepository,
+                                                    _dialogService);
+                                        }
+                                        else
+                                        {
+                                                CurrentViewModel = new DashboardViewModel(
+                                                    _passwordRepository,
+                                                    _loginAttemptRepository,
+                                                    _auditLogRepository,
+                                                    _dialogService,
+                                                    _securityService,
+                                                    _encryptionService,
+                                                    _passwordStrengthService);
+                                        }
                                         break;
+
                                 case "PasswordManagement":
                                         CurrentViewModel = new PasswordManagementViewModel(
                                             _passwordRepository,
@@ -129,6 +197,26 @@ namespace PasswordManager.App.ViewModels
                                             _encryptionService,
                                             _dialogService,
                                             _passwordStrengthService);
+                                        break;
+
+                                case "UserManagement":
+                                        if (IsAdministrator)
+                                        {
+                                                CurrentViewModel = new AdminDashboardViewModel(
+                                                    _userRepository,
+                                                    _auditLogRepository,
+                                                    _dialogService,
+                                                    _securityService);
+                                        }
+                                        break;
+
+                                case "SecurityMonitoring":
+                                        if (IsITSpecialist)
+                                        {
+                                                CurrentViewModel = new SecurityMonitoringViewModel(
+                                                    _loginAttemptRepository,
+                                                    _dialogService);
+                                        }
                                         break;
                         }
                 }
