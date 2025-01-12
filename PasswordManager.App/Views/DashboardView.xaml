@@ -9,121 +9,105 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" 
-                    Orientation="Horizontal" 
-                    Margin="0,0,0,20">
+        <DockPanel Grid.Row="0" Margin="0,0,0,20">
             <TextBlock Text="Dashboard" 
-                       FontSize="24" 
-                       VerticalAlignment="Center"/>
+                  FontSize="24" 
+                  FontWeight="Bold"
+                  VerticalAlignment="Center"/>
             <Button Content="Refresh" 
-                    Command="{Binding RefreshCommand}"
-                    Margin="20,0,0,0"
-                    Padding="10,5"/>
-            <Button Content="Add Password" 
-                    Command="{Binding AddPasswordCommand}"
-                    Margin="10,0,0,0"
-                    Padding="10,5"/>
-        </StackPanel>
+                Command="{Binding RefreshCommand}"
+                DockPanel.Dock="Right"
+                Width="100"
+                Height="30"/>
+        </DockPanel>
 
-        <!-- Stats Section -->
-        <WrapPanel Grid.Row="1" Margin="0,0,0,20">
-            <Border Background="#E3F2FD" 
-                    CornerRadius="5" 
-                    Padding="15" 
-                    Margin="0,0,10,10"
-                    Width="200">
-                <StackPanel>
-                    <TextBlock Text="Total Passwords" 
-                             FontWeight="Bold"/>
-                    <TextBlock Text="{Binding TotalPasswords}" 
-                             FontSize="24"/>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#E8F5E9" 
-                    CornerRadius="5" 
-                    Padding="15" 
-                    Margin="0,0,10,10"
-                    Width="200"
-                    Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <StackPanel>
-                    <TextBlock Text="Failed Login Attempts (24h)" 
-                             FontWeight="Bold"/>
-                    <TextBlock Text="{Binding FailedLoginAttempts}" 
-                             FontSize="24"/>
-                </StackPanel>
-            </Border>
-        </WrapPanel>
+        <!-- Security Metrics -->
+        <ItemsControl Grid.Row="1" 
+                  ItemsSource="{Binding SecurityMetrics}" 
+                  Margin="0,0,0,20">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Width="200" 
+                        Height="100" 
+                        Margin="0,0,10,10" 
+                        CornerRadius="5"
+                        Background="{Binding Status, Converter={StaticResource StatusToColorConverter}}">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="{Binding Name}" 
+                                 FontWeight="Bold"/>
+                            <TextBlock Text="{Binding Value}" 
+                                 FontSize="24"
+                                 Margin="0,5"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <!-- Main Content -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Recent Passwords -->
             <GroupBox Header="Recent Passwords" Grid.Column="0">
                 <ListView ItemsSource="{Binding RecentPasswords}">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel>
-                                <TextBlock Text="{Binding SiteName}" 
-                                         FontWeight="Bold"/>
-                                <TextBlock Text="{Binding Username}" 
-                                         Foreground="Gray"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Site" 
+                                      DisplayMemberBinding="{Binding SiteName}" 
+                                      Width="150"/>
+                            <GridViewColumn Header="Username" 
+                                      DisplayMemberBinding="{Binding Username}" 
+                                      Width="120"/>
+                            <GridViewColumn Header="Modified" 
+                                      Width="150">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ModifiedDate, StringFormat={}{0:g}}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
                 </ListView>
             </GroupBox>
 
             <GridSplitter Grid.Column="1" 
-                         Width="5" 
-                         HorizontalAlignment="Center"
-                         Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                      Width="5" 
+                      HorizontalAlignment="Stretch"/>
 
-            <!-- Admin/IT Section -->
-            <GroupBox Header="System Activity" 
-                     Grid.Column="2"
-                     Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TabControl>
-                    <TabItem Header="Login Attempts">
-                        <ListView ItemsSource="{Binding RecentLoginAttempts}">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel>
-                                        <TextBlock>
-                                            <Run Text="{Binding Username}"/>
-                                            <Run Text=" - "/>
-                                            <Run Text="{Binding AttemptDate, StringFormat=\{0:g\}}"/>
-                                            <Run Text=" - "/>
-                                            <Run Text="{Binding IsSuccessful, Converter={StaticResource BooleanToSuccessConverter}}"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </TabItem>
-                    <TabItem Header="Audit Log">
-                        <ListView ItemsSource="{Binding RecentAuditLogs}">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel>
-                                        <TextBlock>
-                                            <Run Text="{Binding ActionDate, StringFormat=\{0:g\}}"/>
-                                            <Run Text=" - "/>
-                                            <Run Text="{Binding Action}"/>
-                                            <Run Text=" - "/>
-                                            <Run Text="{Binding Details}"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </TabItem>
-                </TabControl>
+            <!-- Expiring Passwords -->
+            <GroupBox Header="Passwords Expiring Soon" Grid.Column="2">
+                <ListView ItemsSource="{Binding ExpiringPasswords}">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Site" 
+                                      DisplayMemberBinding="{Binding SiteName}" 
+                                      Width="150"/>
+                            <GridViewColumn Header="Username" 
+                                      DisplayMemberBinding="{Binding Username}" 
+                                      Width="120"/>
+                            <GridViewColumn Header="Expires" 
+                                      Width="150">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ExpirationDate, StringFormat={}{0:d}}"
+                                             Foreground="Red"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
             </GroupBox>
         </Grid>
     </Grid>

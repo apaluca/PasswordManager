@@ -15,8 +15,10 @@ namespace PasswordManager.Core.Models
                 public string Username { get; set; }
                 public string EncryptedPassword { get; set; }
                 public string Notes { get; set; }
-                public DateTime? ExpirationDate { get; set; }
                 public DateTime? CreatedDate { get; set; }
                 public DateTime? ModifiedDate { get; set; }
+                public DateTime? ExpirationDate { get; set; }
+
+                public bool IsExpired => ExpirationDate.HasValue && ExpirationDate.Value < DateTime.Now;
         }
 }

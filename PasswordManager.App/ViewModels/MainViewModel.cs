@@ -48,9 +48,16 @@ namespace PasswordManager.App.ViewModels
                         get { return SessionManager.CurrentUser.Role == "IT_Specialist"; }
                 }
 
+                public bool IsTwoFactorEnabled
+                {
+                        get { return SessionManager.CurrentUser?.TwoFactorEnabled ?? false; }
+                }
+
                 public ICommand LogoutCommand { get; private set; }
                 public ICommand ChangePasswordCommand { get; private set; }
                 public ICommand NavigateCommand { get; private set; }
+                public ICommand SetupTwoFactorCommand { get; private set; }
+                public ICommand ToggleTwoFactorCommand { get; private set; }
 
                 public MainViewModel(
                         INavigationService navigationService,
@@ -76,7 +83,8 @@ namespace PasswordManager.App.ViewModels
                         LogoutCommand = new RelayCommand(ExecuteLogout);
                         ChangePasswordCommand = new RelayCommand(ExecuteChangePassword);
                         NavigateCommand = new RelayCommand(ExecuteNavigate);
-
+                        SetupTwoFactorCommand = new RelayCommand(_ => ExecuteSetupTwoFactor());
+                        ToggleTwoFactorCommand = new RelayCommand(_ => ExecuteToggleTwoFactor());
 
                         NavigateToDefaultView();
                 }
@@ -218,6 +226,74 @@ namespace PasswordManager.App.ViewModels
                                                     _dialogService);
                                         }
                                         break;
+                        }
+                }
+
+                private void ExecuteSetupTwoFactor()
+                {
+                        var viewModel = new TwoFactorSetupViewModel(
+                            _securityService,
+                            _userRepository,
+                            _dialogService);
+
+                        var window = new TwoFactorSetupWindow
+                        {
+                                Owner = Application.Current.MainWindow,
+                                DataContext = viewModel
+                        };
+
+                        viewModel.SetupCompleted += (s, e) =>
+                        {
+                                SessionManager.CurrentUser.TwoFactorEnabled = true;
+                                OnPropertyChanged(nameof(IsTwoFactorEnabled));
+                                window.Close();
+                        };
+
+                        window.ShowDialog();
+                }
+
+                private void ExecuteToggleTwoFactor()
+                {
+                        if (IsTwoFactorEnabled)
+                        {
+                                if (_dialogService.ShowConfirmation(
+                                    "Are you sure you want to disable two-factor authentication?\n\n" +
+                                    "This will make your account less secure."))
+                                {
+                                        try
+                                        {
+                                                _userRepository.DisableTwoFactor(SessionManager.CurrentUser.UserId);
+                                                SessionManager.CurrentUser.TwoFactorEnabled = false;
+                                                OnPropertyChanged(nameof(IsTwoFactorEnabled));
+                                                _dialogService.ShowMessage("Two-factor authentication has been disabled.");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                                _dialogService.ShowError("Failed to disable two-factor authentication: " + ex.Message);
+                                        }
+                                }
+                        }
+                        else
+                        {
+                                var viewModel = new TwoFactorSetupViewModel(
+                                    _securityService,
+                                    _userRepository,
+                                    _dialogService);
+
+                                var window = new TwoFactorSetupWindow
+                                {
+                                        Owner = Application.Current.MainWindow,
+                                        DataContext = viewModel
+                                };
+
+                                viewModel.SetupCompleted += (s, e) =>
+                                {
+                                        SessionManager.CurrentUser.TwoFactorEnabled = true;
+                                        OnPropertyChanged(nameof(IsTwoFactorEnabled));
+                                        window.Close();
+                                };
+
+                                window.ShowDialog();
                         }
                 }
         }

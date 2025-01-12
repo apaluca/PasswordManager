@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Title="Set Up Two-Factor Authentication" 
-        Height="623" 
-        Width="504"
+        Height="650" 
+        Width="510"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
     <Grid Margin="20">
@@ -78,16 +78,6 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="Or enter this setup key manually:" 
-                       Margin="0,0,0,5"/>
-
-            <TextBox Text="{Binding SetupKey, Mode=OneWay}" 
-                     IsReadOnly="True"
-                     FontFamily="Consolas"
-                     FontSize="16"
-                     Padding="10"
-                     Margin="0,0,0,20"/>
-
             <Button Content="Generate New Key" 
                     Command="{Binding GenerateNewKeyCommand}"
                     Width="150"
@@ -99,17 +89,18 @@
 
             <DockPanel LastChildFill="True" Margin="0,0,0,5">
                 <TextBlock DockPanel.Dock="Right" 
-                          Text="{Binding RemainingSeconds, StringFormat={}({0}s)}"
-                          Margin="10,0,0,0"
-                          VerticalAlignment="Center"/>
+                        Text="{Binding RemainingSeconds, StringFormat={}({0}s)}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"/>
                 <TextBox Text="{Binding VerificationCode, UpdateSourceTrigger=PropertyChanged}"
-                         MaxLength="6"
-                         FontFamily="Consolas"
-                         FontSize="20"
-                         Padding="10"
-                         CharacterCasing="Upper">
+                        MaxLength="6"
+                        FontFamily="Consolas"
+                        FontSize="20"
+                        Padding="10"
+                        Margin="0,0,0,5"
+                        PreviewTextInput="VerificationCodeBox_PreviewTextInput">
                     <TextBox.Style>
-                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Style TargetType="TextBox">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsVerified}" Value="True">
                                     <Setter Property="IsEnabled" Value="False"/>

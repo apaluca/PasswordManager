@@ -1,4 +1,5 @@
-﻿using PasswordManager.Data.DataContext;
+﻿using PasswordManager.Core.Models;
+using PasswordManager.Data.DataContext;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,11 +10,11 @@ namespace PasswordManager.Data.Repositories.Interfaces
 {
         public interface IStoredPasswordRepository
         {
-                StoredPassword GetById(int passwordId);
-                IEnumerable<StoredPassword> GetByUserId(int userId);
-                void Create(StoredPassword password);
-                void Update(StoredPassword password);
+                StoredPasswordModel GetById(int passwordId);
+                IEnumerable<StoredPasswordModel> GetByUserId(int userId);
+                void Create(StoredPasswordModel password);
+                void Update(StoredPasswordModel password);
                 void Delete(int passwordId);
-                IEnumerable<StoredPassword> Search(int userId, string searchTerm);
+                IEnumerable<StoredPasswordModel> Search(int userId, string searchTerm);
         }
 }

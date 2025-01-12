@@ -11,7 +11,7 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Administrator Dashboard" 
+            <TextBlock Text="User Management" 
                       FontSize="24" 
                       FontWeight="Bold"
                       Margin="0,0,0,10"/>

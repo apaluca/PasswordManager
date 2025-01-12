@@ -17,6 +17,8 @@
         <converters:BoolToTitleConverter x:Key="BoolToTitleConverter"/>
         <converters:DateExpiredConverter x:Key="DateExpiredConverter"/>
         <converters:BoolToWindowTitleConverter x:Key="BoolToWindowTitleConverter"/>
+        <converters:BoolToTwoFactorButtonConverter x:Key="BoolToTwoFactorButtonConverter"/>
+        <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
 
         <!-- Button Style -->
         <Style TargetType="Button">

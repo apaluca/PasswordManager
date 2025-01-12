@@ -25,22 +25,31 @@ namespace PasswordManager.App.ViewModels
                 private readonly ISecurityService _securityService;
                 private readonly IEncryptionService _encryptionService;
                 private readonly IPasswordStrengthService _passwordStrengthService;
-                private ObservableCollection<StoredPasswordModel> _expiringPasswords;
-                public ObservableCollection<StoredPasswordModel> ExpiringPasswords
-                {
-                        get { return _expiringPasswords; }
-                        private set { SetProperty(ref _expiringPasswords, value); }
-                }
-
+                public ObservableCollection<StoredPasswordModel> ExpiringPasswords { get; private set; }
                 public ObservableCollection<StoredPasswordModel> RecentPasswords { get; private set; }
+                public ObservableCollection<SecurityMetric> SecurityMetrics { get; private set; }
                 public ObservableCollection<LoginAttemptModel> RecentLoginAttempts { get; private set; }
                 public ObservableCollection<AuditLogModel> RecentAuditLogs { get; private set; }
 
                 private int _totalPasswords;
                 public int TotalPasswords
                 {
-                        get { return _totalPasswords; }
-                        set { SetProperty(ref _totalPasswords, value); }
+                        get => _totalPasswords;
+                        set => SetProperty(ref _totalPasswords, value);
+                }
+
+                private int _expiringPasswordCount;
+                public int ExpiringPasswordCount
+                {
+                        get => _expiringPasswordCount;
+                        set => SetProperty(ref _expiringPasswordCount, value);
+                }
+
+                private int _weakPasswordCount;
+                public int WeakPasswordCount
+                {
+                        get => _weakPasswordCount;
+                        set => SetProperty(ref _weakPasswordCount, value);
                 }
 
                 private int _failedLoginAttempts;
@@ -84,8 +93,9 @@ namespace PasswordManager.App.ViewModels
                         RecentLoginAttempts = new ObservableCollection<LoginAttemptModel>();
                         RecentAuditLogs = new ObservableCollection<AuditLogModel>();
                         ExpiringPasswords = new ObservableCollection<StoredPasswordModel>();
+                        SecurityMetrics = new ObservableCollection<SecurityMetric>();
 
-                        RefreshCommand = new RelayCommand(ExecuteRefresh);
+                        RefreshCommand = new RelayCommand(_ => LoadDashboardData());
                         AddPasswordCommand = new RelayCommand(ExecuteAddPassword);
 
                         LoadDashboardData();
@@ -94,90 +104,55 @@ namespace PasswordManager.App.ViewModels
                 private void LoadDashboardData()
                 {
                         var userId = SessionManager.CurrentUser.UserId;
+                        var passwords = _passwordRepository.GetByUserId(userId).ToList();
 
-                        // Load passwords
-                        var passwords = _passwordRepository.GetByUserId(userId)
-                        .Select(p => new StoredPasswordModel
-                        {
-                                Id = p.PasswordId,
-                                UserId = p.UserId,
-                                SiteName = p.SiteName,
-                                SiteUrl = p.SiteUrl,
-                                Username = p.Username,
-                                EncryptedPassword = p.EncryptedPassword,
-                                Notes = p.Notes,
-                                CreatedDate = p.CreatedDate,
-                                ModifiedDate = p.ModifiedDate,
-                                ExpirationDate = p.CreatedDate?.AddMonths(3)
-                        }).ToList();
+                        // Update basic metrics
+                        TotalPasswords = passwords.Count;
+
+                        // Get recent passwords
+                        var recentPasswords = passwords
+                            .OrderByDescending(p => p.ModifiedDate)
+                            .Take(5);
+
                         RecentPasswords.Clear();
-                        foreach (var password in passwords.Take(5))
+                        foreach (var password in recentPasswords)
                         {
                                 RecentPasswords.Add(password);
                         }
-                        TotalPasswords = passwords.Count();
 
-                        // Load additional data for admin/IT
-                        if (IsAdministrator || IsITSpecialist)
-                        {
-                                var loginAttempts = _loginAttemptRepository.GetRecentAttempts(5)
-                                    .Select(la => new LoginAttemptModel
-                                    {
-                                            AttemptId = la.AttemptId,
-                                            Username = la.Username,
-                                            AttemptDate = la.AttemptDate,
-                                            IsSuccessful = la.IsSuccessful,
-                                            IPAddress = la.IPAddress,
-                                            UserAgent = la.UserAgent
-                                    });
-
-                                RecentLoginAttempts.Clear();
-                                foreach (var attempt in loginAttempts)
-                                {
-                                        RecentLoginAttempts.Add(attempt);
-                                }
-
-                                var auditLogs = _auditLogRepository.GetRecentLogs(5)
-                                    .Select(log => new AuditLogModel
-                                    {
-                                            LogId = log.LogId,
-                                            UserId = log.UserId,
-                                            ActionDate = log.ActionDate,
-                                            Action = log.Action,
-                                            Details = log.Details,
-                                            IPAddress = log.IPAddress,
-                                            Username = log.User?.Username ?? "System"
-                                    });
-
-                                RecentAuditLogs.Clear();
-                                foreach (var log in auditLogs)
-                                {
-                                        RecentAuditLogs.Add(log);
-                                }
-                        }
-
-                        // Check for expiring passwords
+                        // Get expiring passwords (within 30 days)
                         var thirtyDaysFromNow = DateTime.Now.AddDays(30);
                         var expiring = passwords
-                            .Where(p => p.ExpirationDate != null && p.ExpirationDate <= thirtyDaysFromNow)
-                            .OrderBy(p => p.ExpirationDate)
-                            .ToList();
+                            .Where(p => p.ExpirationDate <= thirtyDaysFromNow)
+                            .OrderBy(p => p.ExpirationDate);
 
                         ExpiringPasswords.Clear();
                         foreach (var password in expiring)
                         {
                                 ExpiringPasswords.Add(password);
                         }
+                        ExpiringPasswordCount = expiring.Count();
 
-                        if (expiring.Any())
+                        // Calculate security metrics
+                        SecurityMetrics.Clear();
+                        SecurityMetrics.Add(new SecurityMetric
                         {
-                                _dialogService.ShowMessage($"You have {expiring.Count} passwords that will expire soon!");
-                        }
-                }
-
-                private void ExecuteRefresh(object parameter)
-                {
-                        LoadDashboardData();
+                                Name = "Total Passwords",
+                                Value = TotalPasswords.ToString(),
+                                Status = "Info"
+                        });
+                        SecurityMetrics.Add(new SecurityMetric
+                        {
+                                Name = "Expiring Soon",
+                                Value = ExpiringPasswordCount.ToString(),
+                                Status = ExpiringPasswordCount > 0 ? "Warning" : "Good"
+                        });
+                        SecurityMetrics.Add(new SecurityMetric
+                        {
+                                Name = "2FA Status",
+                                Value = SessionManager.CurrentUser.TwoFactorEnabled ? "Enabled" : "Disabled",
+                                Status = SessionManager.CurrentUser.TwoFactorEnabled ? "Good" : "Warning"
+                        });
                 }
 
                 private void ExecuteAddPassword(object parameter)
@@ -187,7 +162,8 @@ namespace PasswordManager.App.ViewModels
                             _securityService,
                             _encryptionService,
                             _dialogService,
-                            _passwordStrengthService);
+                            _passwordStrengthService,
+                            _auditLogRepository);
 
                         var window = new PasswordEntryWindow
                         {
@@ -213,6 +189,7 @@ namespace PasswordManager.App.ViewModels
                             _encryptionService,
                             _dialogService,
                             _passwordStrengthService,
+                            _auditLogRepository,
                             password);
 
                         var window = new PasswordEntryWindow

@@ -3,6 +3,7 @@ using PasswordManager.Core.MVVM;
 using PasswordManager.Core.Services.Interfaces;
 using PasswordManager.Core.Services;
 using PasswordManager.Data.Repositories.Interfaces;
+using PasswordManager.Data.Mappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,7 @@ using System.Windows.Input;
 using System.Windows;
 using PasswordManager.Core.Models;
 using PasswordManager.Data.DataContext;
+using PasswordManager.Data.Repositories;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -22,6 +24,7 @@ namespace PasswordManager.App.ViewModels
                 private readonly IDialogService _dialogService;
                 private readonly IEncryptionService _encryptionService;
                 private readonly IPasswordStrengthService _passwordStrengthService;
+                private readonly IAuditLogRepository _auditLogRepository;
 
                 private int? _passwordId;
                 private string _siteName;
@@ -33,6 +36,7 @@ namespace PasswordManager.App.ViewModels
                 private PasswordStrength _passwordStrength;
                 private bool _showPassword;
                 private bool _isEditing;
+                private bool _hasExpirationDate;
 
                 public string SiteName
                 {
@@ -113,6 +117,26 @@ namespace PasswordManager.App.ViewModels
                         private set => SetProperty(ref _isEditing, value);
                 }
 
+                public bool HasExpirationDate
+                {
+                        get => _hasExpirationDate;
+                        set
+                        {
+                                if (SetProperty(ref _hasExpirationDate, value))
+                                {
+                                        if (!value)
+                                        {
+                                                ExpirationDate = null;
+                                        }
+                                        else if (!ExpirationDate.HasValue)
+                                        {
+                                                // Set default expiration to 3 months from now only if user enables expiration
+                                                ExpirationDate = DateTime.Now.AddMonths(3);
+                                        }
+                                }
+                        }
+                }
+
                 public PasswordStrength PasswordStrength => _passwordStrength;
 
                 public string StrengthDescription => _passwordStrengthService.GetStrengthDescription(_passwordStrength);
@@ -128,33 +152,38 @@ namespace PasswordManager.App.ViewModels
                 public event EventHandler RequestClose;
 
                 public PasswordEntryViewModel(
-                    IStoredPasswordRepository passwordRepository,
-                    ISecurityService securityService,
-                    IEncryptionService encryptionService,
-                    IDialogService dialogService,
-                    IPasswordStrengthService passwordStrengthService,
-                    StoredPasswordModel existingPassword = null)
+                        IStoredPasswordRepository passwordRepository,
+                        ISecurityService securityService,
+                        IEncryptionService encryptionService,
+                        IDialogService dialogService,
+                        IPasswordStrengthService passwordStrengthService,
+                        IAuditLogRepository auditLogRepository = null,
+                        StoredPasswordModel existingPassword = null)
                 {
                         _passwordRepository = passwordRepository;
                         _securityService = securityService;
                         _encryptionService = encryptionService;
                         _dialogService = dialogService;
                         _passwordStrengthService = passwordStrengthService;
+                        _auditLogRepository = auditLogRepository;
+
+                        if (existingPassword != null)
+                        {
+                                LoadExistingPassword(existingPassword);
+                                IsEditing = true;
+                                HasExpirationDate = existingPassword.ExpirationDate.HasValue;
+                        }
+                        else
+                        {
+                                HasExpirationDate = false;
+                                ExpirationDate = null;
+                        }
 
                         SaveCommand = new RelayCommand(ExecuteSave, CanExecuteSave);
                         GeneratePasswordCommand = new RelayCommand(_ => ExecuteGeneratePassword());
                         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(this, EventArgs.Empty));
                         TogglePasswordCommand = new RelayCommand(_ => ShowPassword = !ShowPassword);
                         CopyPasswordCommand = new RelayCommand(_ => ExecuteCopyPassword());
-
-                        // Set default expiration to 3 months from now
-                        ExpirationDate = DateTime.Now.AddMonths(3);
-
-                        if (existingPassword != null)
-                        {
-                                LoadExistingPassword(existingPassword);
-                                IsEditing = true;
-                        }
                 }
 
                 private void LoadExistingPassword(StoredPasswordModel password)
@@ -165,7 +194,17 @@ namespace PasswordManager.App.ViewModels
                         Username = password.Username;
                         Password = _encryptionService.Decrypt(password.EncryptedPassword);
                         Notes = password.Notes;
-                        ExpirationDate = password.ExpirationDate;
+
+                        if (password.CreatedDate.HasValue)
+                        {
+                                ExpirationDate = password.CreatedDate.Value.AddMonths(3);
+                                HasExpirationDate = true;
+                        }
+                        else
+                        {
+                                ExpirationDate = null;
+                                HasExpirationDate = false;
+                        }
                 }
 
                 private bool CanExecuteSave(object parameter)
@@ -180,7 +219,6 @@ namespace PasswordManager.App.ViewModels
                 {
                         try
                         {
-                                // Create the DataContext entity
                                 var passwordEntry = new StoredPassword
                                 {
                                         PasswordId = _passwordId ?? 0,
@@ -195,12 +233,16 @@ namespace PasswordManager.App.ViewModels
 
                                 if (IsEditing)
                                 {
-                                        _passwordRepository.Update(passwordEntry);
+                                        // For edited passwords, we keep the original CreatedDate
+                                        _passwordRepository.Update(PasswordMapper.ToModel(passwordEntry));
                                 }
                                 else
                                 {
-                                        passwordEntry.CreatedDate = DateTime.Now;
-                                        _passwordRepository.Create(passwordEntry);
+                                        // For new passwords, set CreatedDate
+                                        passwordEntry.CreatedDate = HasExpirationDate ?
+                                            ExpirationDate?.AddMonths(-3) : // Work backwards from desired expiration
+                                            DateTime.Now; // No expiration
+                                        _passwordRepository.Create(PasswordMapper.ToModel(passwordEntry));
                                 }
 
                                 RequestClose?.Invoke(this, EventArgs.Empty);
@@ -223,6 +265,11 @@ namespace PasswordManager.App.ViewModels
                         {
                                 Clipboard.SetText(Password);
                                 _dialogService.ShowMessage("Password copied to clipboard!");
+                                _auditLogRepository.LogAction(
+                                    SessionManager.CurrentUser.UserId,
+                                    "Password Copied",
+                                    $"Copied password for {SiteName}",
+                                    "localhost");
 
                                 // Clear clipboard after 30 seconds
                                 System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(30))
@@ -242,10 +289,12 @@ namespace PasswordManager.App.ViewModels
                                 _dialogService.ShowError("Failed to copy password: " + ex.Message);
                         }
                 }
-
                 private void ValidateInput()
                 {
-                        ((RelayCommand)SaveCommand).RaiseCanExecuteChanged();
+                        if (SaveCommand is RelayCommand relayCommand)
+                        {
+                                relayCommand.RaiseCanExecuteChanged();
+                        }
                 }
         }
 }

@@ -1,5 +1,7 @@
-﻿using PasswordManager.Core.Services.Interfaces;
+﻿using PasswordManager.Core.Models;
+using PasswordManager.Core.Services.Interfaces;
 using PasswordManager.Data.DataContext;
+using PasswordManager.Data.Mappers;
 using PasswordManager.Data.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -20,35 +22,47 @@ namespace PasswordManager.Data.Repositories
                         _encryptionService = encryptionService;
                 }
 
-                public StoredPassword GetById(int passwordId)
+                public StoredPasswordModel GetById(int passwordId)
                 {
-                        return _context.StoredPasswords.FirstOrDefault(p => p.PasswordId == passwordId);
+                        var entity = _context.StoredPasswords.FirstOrDefault(p => p.PasswordId == passwordId);
+                        return entity?.ToModel();
                 }
 
-                public IEnumerable<StoredPassword> GetByUserId(int userId)
+                public IEnumerable<StoredPasswordModel> GetByUserId(int userId)
                 {
-                        return _context.StoredPasswords.Where(p => p.UserId == userId);
+                        return _context.StoredPasswords
+                            .Where(p => p.UserId == userId)
+                            .Select(p => p.ToModel());
                 }
 
-                public void Create(StoredPassword password)
+                public void Create(StoredPasswordModel password)
                 {
-                        password.EncryptedPassword = _encryptionService.Encrypt(password.EncryptedPassword);
-                        password.CreatedDate = DateTime.Now;
-                        password.ModifiedDate = DateTime.Now;
-
-                        _context.StoredPasswords.InsertOnSubmit(password);
+                        var entity = password.ToEntity();
+                        _context.StoredPasswords.InsertOnSubmit(entity);
                         _context.SubmitChanges();
+                        password.Id = entity.PasswordId; // Update the ID after insert
                 }
 
-                public void Update(StoredPassword password)
+                public void Update(StoredPasswordModel password)
                 {
-                        password.ModifiedDate = DateTime.Now;
-                        _context.SubmitChanges();
+                        var entity = _context.StoredPasswords.FirstOrDefault(p => p.PasswordId == password.Id);
+                        if (entity != null)
+                        {
+                                entity.SiteName = password.SiteName;
+                                entity.SiteUrl = password.SiteUrl;
+                                entity.Username = password.Username;
+                                entity.EncryptedPassword = password.EncryptedPassword;
+                                entity.Notes = password.Notes;
+                                entity.CreatedDate = password.ExpirationDate?.AddMonths(-3);
+                                entity.ModifiedDate = DateTime.Now;
+
+                                _context.SubmitChanges();
+                        }
                 }
 
                 public void Delete(int passwordId)
                 {
-                        var password = GetById(passwordId);
+                        var password = _context.StoredPasswords.FirstOrDefault(p => p.PasswordId == passwordId);
                         if (password != null)
                         {
                                 _context.StoredPasswords.DeleteOnSubmit(password);
@@ -56,14 +70,14 @@ namespace PasswordManager.Data.Repositories
                         }
                 }
 
-                public IEnumerable<StoredPassword> Search(int userId, string searchTerm)
+                public IEnumerable<StoredPasswordModel> Search(int userId, string searchTerm)
                 {
                         return _context.StoredPasswords
                             .Where(p => p.UserId == userId &&
                                 (p.SiteName.Contains(searchTerm) ||
                                  p.Username.Contains(searchTerm) ||
-                                 p.SiteUrl.Contains(searchTerm)));
+                                 p.SiteUrl.Contains(searchTerm)))
+                            .Select(p => p.ToModel());
                 }
         }
-
 }

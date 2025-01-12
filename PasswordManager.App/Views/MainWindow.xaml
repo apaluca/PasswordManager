@@ -14,18 +14,24 @@
         Padding="10">
             <DockPanel>
                 <Button DockPanel.Dock="Right" 
-                Content="Logout" 
-                Command="{Binding LogoutCommand}"
-                Width="80"
-                Height="30"/>
+                        Content="Logout" 
+                        Command="{Binding LogoutCommand}"
+                        Width="80"
+                        Height="30"/>
                 <Button DockPanel.Dock="Right" 
-                Content="Change Password" 
-                Command="{Binding ChangePasswordCommand}"
-                Width="120"
-                Height="30"
-                Margin="0,0,10,0"/>
+                        Content="{Binding IsTwoFactorEnabled, Converter={StaticResource BoolToTwoFactorButtonConverter}}"
+                        Command="{Binding ToggleTwoFactorCommand}"
+                        Width="100"
+                        Height="30"
+                        Margin="0,0,10,0"/>
+                <Button DockPanel.Dock="Right" 
+                        Content="Change Password" 
+                        Command="{Binding ChangePasswordCommand}"
+                        Width="120"
+                        Height="30"
+                        Margin="0,0,10,0"/>
                 <TextBlock Text="{Binding WelcomeMessage}" 
-                  VerticalAlignment="Center"/>
+                        VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 

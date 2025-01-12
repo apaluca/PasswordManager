@@ -5,6 +5,7 @@ using PasswordManager.Core.MVVM;
 using PasswordManager.Core.Services.Interfaces;
 using PasswordManager.Core.Services;
 using PasswordManager.Data.Repositories.Interfaces;
+using PasswordManager.Data.Mappers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -101,7 +102,7 @@ namespace PasswordManager.App.ViewModels
                                     .GetByUserId(SessionManager.CurrentUser.UserId)
                                     .Select(p => new StoredPasswordModel
                                     {
-                                            Id = p.PasswordId,
+                                            Id = p.Id,
                                             UserId = p.UserId,
                                             SiteName = p.SiteName,
                                             SiteUrl = p.SiteUrl,
@@ -133,7 +134,7 @@ namespace PasswordManager.App.ViewModels
                             .GetByUserId(SessionManager.CurrentUser.UserId)
                             .Select(p => new StoredPasswordModel
                             {
-                                    Id = p.PasswordId,
+                                    Id = p.Id,
                                     UserId = p.UserId,
                                     SiteName = p.SiteName,
                                     SiteUrl = p.SiteUrl,
@@ -199,27 +200,36 @@ namespace PasswordManager.App.ViewModels
 
                 private void ExecuteEditPassword()
                 {
-                        var viewModel = new PasswordEntryViewModel(
-                            _passwordRepository,
-                            _securityService,
-                            _encryptionService,
-                            _dialogService,
-                            _passwordStrengthService,
-                            SelectedPassword);
-
-                        var window = new PasswordEntryWindow
+                        try
                         {
-                                Owner = Application.Current.MainWindow,
-                                DataContext = viewModel
-                        };
+                                var viewModel = new PasswordEntryViewModel(
+                                    _passwordRepository,
+                                    _securityService,
+                                    _encryptionService,
+                                    _dialogService,
+                                    _passwordStrengthService,
+                                    null,
+                                    SelectedPassword
+                                );
 
-                        viewModel.RequestClose += (s, e) =>
+                                var window = new PasswordEntryWindow
+                                {
+                                        Owner = Application.Current.MainWindow,
+                                        DataContext = viewModel
+                                };
+
+                                viewModel.RequestClose += (s, e) =>
+                                {
+                                        window.DialogResult = true;
+                                        LoadPasswords();
+                                };
+
+                                window.ShowDialog();
+                        }
+                        catch (Exception ex)
                         {
-                                window.DialogResult = true;
-                                LoadPasswords();
-                        };
-
-                        window.ShowDialog();
+                                _dialogService.ShowError("Failed to edit password: " + ex.Message);
+                        }
                 }
 
                 private void ExecuteDeletePassword()
