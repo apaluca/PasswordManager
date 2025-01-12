@@ -14,9 +14,6 @@ using System.Windows.Shapes;
 
 namespace PasswordManager.App.Views
 {
-        /// <summary>
-        /// Interaction logic for PasswordEntryWindow.xaml
-        /// </summary>
         public partial class PasswordEntryWindow : Window
         {
                 public PasswordEntryWindow()

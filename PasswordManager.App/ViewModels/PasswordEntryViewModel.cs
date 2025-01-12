@@ -10,6 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows;
+using PasswordManager.Core.Models;
+using PasswordManager.Data.DataContext;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -20,8 +22,6 @@ namespace PasswordManager.App.ViewModels
                 private readonly IDialogService _dialogService;
                 private readonly IEncryptionService _encryptionService;
                 private readonly IPasswordStrengthService _passwordStrengthService;
-                private DateTime? _expirationDate;
-                private PasswordStrength _passwordStrength;
 
                 private int? _passwordId;
                 private string _siteName;
@@ -29,66 +29,101 @@ namespace PasswordManager.App.ViewModels
                 private string _username;
                 private string _password;
                 private string _notes;
-                private bool _isEditing;
+                private DateTime? _expirationDate;
+                private PasswordStrength _passwordStrength;
                 private bool _showPassword;
+                private bool _isEditing;
 
                 public string SiteName
                 {
-                        get { return _siteName; }
-                        set { SetProperty(ref _siteName, value); }
-                }
-
-                public string SiteUrl
-                {
-                        get { return _siteUrl; }
-                        set { SetProperty(ref _siteUrl, value); }
-                }
-
-                public string Username
-                {
-                        get { return _username; }
-                        set { SetProperty(ref _username, value); }
-                }
-
-                public string Password
-                {
-                        get { return _password; }
-                        set { SetProperty(ref _password, value); }
-                }
-
-                public string Notes
-                {
-                        get { return _notes; }
-                        set { SetProperty(ref _notes, value); }
-                }
-
-                public bool ShowPassword
-                {
-                        get { return _showPassword; }
+                        get => _siteName;
                         set
                         {
-                                if (SetProperty(ref _showPassword, value))
+                                if (SetProperty(ref _siteName, value))
                                 {
-                                        OnPropertyChanged("DisplayPassword");
+                                        ValidateInput();
                                 }
                         }
                 }
 
-                public string DisplayPassword
+                public string SiteUrl
                 {
-                        get { return ShowPassword ? Password : new string('•', Password?.Length ?? 0); }
+                        get => _siteUrl;
+                        set => SetProperty(ref _siteUrl, value);
                 }
+
+                public string Username
+                {
+                        get => _username;
+                        set
+                        {
+                                if (SetProperty(ref _username, value))
+                                {
+                                        ValidateInput();
+                                }
+                        }
+                }
+
+                public string Password
+                {
+                        get => _password;
+                        set
+                        {
+                                if (SetProperty(ref _password, value))
+                                {
+                                        OnPropertyChanged(nameof(DisplayPassword));
+                                        _passwordStrength = _passwordStrengthService.CheckStrength(value);
+                                        OnPropertyChanged(nameof(PasswordStrength));
+                                        OnPropertyChanged(nameof(StrengthDescription));
+                                        OnPropertyChanged(nameof(StrengthColor));
+                                        ValidateInput();
+                                }
+                        }
+                }
+
+                public string Notes
+                {
+                        get => _notes;
+                        set => SetProperty(ref _notes, value);
+                }
+
+                public DateTime? ExpirationDate
+                {
+                        get => _expirationDate;
+                        set => SetProperty(ref _expirationDate, value);
+                }
+
+                public bool ShowPassword
+                {
+                        get => _showPassword;
+                        set
+                        {
+                                if (SetProperty(ref _showPassword, value))
+                                {
+                                        OnPropertyChanged(nameof(DisplayPassword));
+                                }
+                        }
+                }
+
+                public string DisplayPassword => ShowPassword ? Password : new string('•', Password?.Length ?? 0);
 
                 public bool IsEditing
                 {
-                        get { return _isEditing; }
-                        set { SetProperty(ref _isEditing, value); }
+                        get => _isEditing;
+                        private set => SetProperty(ref _isEditing, value);
                 }
 
-                public ICommand SaveCommand { get; private set; }
-                public ICommand GeneratePasswordCommand { get; private set; }
-                public ICommand CancelCommand { get; private set; }
-                public ICommand TogglePasswordCommand { get; private set; }
+                public PasswordStrength PasswordStrength => _passwordStrength;
+
+                public string StrengthDescription => _passwordStrengthService.GetStrengthDescription(_passwordStrength);
+
+                public string StrengthColor => _passwordStrengthService.GetStrengthColor(_passwordStrength);
+
+                public ICommand SaveCommand { get; }
+                public ICommand GeneratePasswordCommand { get; }
+                public ICommand CancelCommand { get; }
+                public ICommand TogglePasswordCommand { get; }
+                public ICommand CopyPasswordCommand { get; }
 
                 public event EventHandler RequestClose;
 
@@ -97,17 +132,23 @@ namespace PasswordManager.App.ViewModels
                     ISecurityService securityService,
                     IEncryptionService encryptionService,
                     IDialogService dialogService,
+                    IPasswordStrengthService passwordStrengthService,
                     StoredPasswordModel existingPassword = null)
                 {
                         _passwordRepository = passwordRepository;
                         _securityService = securityService;
                         _encryptionService = encryptionService;
                         _dialogService = dialogService;
+                        _passwordStrengthService = passwordStrengthService;
 
                         SaveCommand = new RelayCommand(ExecuteSave, CanExecuteSave);
-                        GeneratePasswordCommand = new RelayCommand(ExecuteGeneratePassword);
-                        CancelCommand = new RelayCommand(ExecuteCancel);
-                        TogglePasswordCommand = new RelayCommand(ExecuteTogglePassword);
+                        GeneratePasswordCommand = new RelayCommand(_ => ExecuteGeneratePassword());
+                        CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(this, EventArgs.Empty));
+                        TogglePasswordCommand = new RelayCommand(_ => ShowPassword = !ShowPassword);
+                        CopyPasswordCommand = new RelayCommand(_ => ExecuteCopyPassword());
+
+                        // Set default expiration to 3 months from now
+                        ExpirationDate = DateTime.Now.AddMonths(3);
 
                         if (existingPassword != null)
                         {
@@ -124,29 +165,32 @@ namespace PasswordManager.App.ViewModels
                         Username = password.Username;
                         Password = _encryptionService.Decrypt(password.EncryptedPassword);
                         Notes = password.Notes;
+                        ExpirationDate = password.ExpirationDate;
                 }
 
                 private bool CanExecuteSave(object parameter)
                 {
                         return !string.IsNullOrWhiteSpace(SiteName) &&
                                !string.IsNullOrWhiteSpace(Username) &&
-                               !string.IsNullOrWhiteSpace(Password);
+                               !string.IsNullOrWhiteSpace(Password) &&
+                               _passwordStrength >= PasswordStrength.Medium;
                 }
 
                 private void ExecuteSave(object parameter)
                 {
                         try
                         {
-                                var passwordEntry = new StoredPasswordModel
+                                // Create the DataContext entity
+                                var passwordEntry = new StoredPassword
                                 {
-                                        Id = _passwordId ?? 0,
-                                        UserId = SessionManager.CurrentUser.Id,
+                                        PasswordId = _passwordId ?? 0,
+                                        UserId = SessionManager.CurrentUser.UserId,
                                         SiteName = SiteName,
                                         SiteUrl = SiteUrl,
                                         Username = Username,
                                         EncryptedPassword = _encryptionService.Encrypt(Password),
                                         Notes = Notes,
-                                        ExpirationDate = ExpirationDate
+                                        ModifiedDate = DateTime.Now
                                 };
 
                                 if (IsEditing)
@@ -155,6 +199,7 @@ namespace PasswordManager.App.ViewModels
                                 }
                                 else
                                 {
+                                        passwordEntry.CreatedDate = DateTime.Now;
                                         _passwordRepository.Create(passwordEntry);
                                 }
 
@@ -162,97 +207,17 @@ namespace PasswordManager.App.ViewModels
                         }
                         catch (Exception ex)
                         {
-                                _dialogService.ShowError($"Failed to save password: {ex.Message}");
+                                _dialogService.ShowError("Failed to save password: " + ex.Message);
                         }
                 }
 
-                private void ExecuteGeneratePassword(object parameter)
+                private void ExecuteGeneratePassword()
                 {
                         Password = _securityService.GenerateStrongPassword();
-                        OnPropertyChanged("DisplayPassword");
+                        ShowPassword = true;
                 }
 
-                private void ExecuteCancel(object parameter)
-                {
-                        RequestClose?.Invoke(this, EventArgs.Empty);
-                }
-
-                private void ExecuteTogglePassword(object parameter)
-                {
-                        ShowPassword = !ShowPassword;
-                }
-
-                public DateTime? ExpirationDate
-                {
-                        get { return _expirationDate; }
-                        set { SetProperty(ref _expirationDate, value); }
-                }
-
-                public PasswordStrength PasswordStrength
-                {
-                        get { return _passwordStrength; }
-                        private set
-                        {
-                                if (SetProperty(ref _passwordStrength, value))
-                                {
-                                        OnPropertyChanged("StrengthDescription");
-                                        OnPropertyChanged("StrengthColor");
-                                }
-                        }
-                }
-
-                public string StrengthDescription
-                {
-                        get { return _passwordStrengthService.GetStrengthDescription(PasswordStrength); }
-                }
-
-                public string StrengthColor
-                {
-                        get { return _passwordStrengthService.GetStrengthColor(PasswordStrength); }
-                }
-
-                public ICommand CopyUsernameCommand { get; private set; }
-                public ICommand CopyPasswordCommand { get; private set; }
-                public ICommand DeleteCommand { get; private set; }
-
-                public PasswordEntryViewModel(/* existing parameters */,
-                    IPasswordStrengthService passwordStrengthService)
-                {
-                        _passwordStrengthService = passwordStrengthService;
-
-                        // Add new commands
-                        CopyUsernameCommand = new RelayCommand(ExecuteCopyUsername);
-                        CopyPasswordCommand = new RelayCommand(ExecuteCopyPassword);
-                        DeleteCommand = new RelayCommand(ExecuteDelete);
-
-                        // Set default expiration
-                        ExpirationDate = DateTime.Now.AddMonths(3);
-                }
-
-                protected override void OnPropertyChanged(string propertyName)
-                {
-                        base.OnPropertyChanged(propertyName);
-
-                        if (propertyName == "Password")
-                        {
-                                PasswordStrength = _passwordStrengthService.CheckStrength(Password);
-                        }
-                }
-
-                private void ExecuteCopyUsername(object parameter)
-                {
-                        try
-                        {
-                                Clipboard.SetText(Username);
-                                _dialogService.ShowMessage("Username copied to clipboard!");
-                        }
-                        catch (Exception ex)
-                        {
-                                _dialogService.ShowError("Failed to copy username: " + ex.Message);
-                        }
-                }
-
-                private void ExecuteCopyPassword(object parameter)
+                private void ExecuteCopyPassword()
                 {
                         try
                         {
@@ -260,16 +225,17 @@ namespace PasswordManager.App.ViewModels
                                 _dialogService.ShowMessage("Password copied to clipboard!");
 
                                 // Clear clipboard after 30 seconds
-                                Task.Delay(TimeSpan.FromSeconds(30)).ContinueWith(t =>
-                                {
-                                        Application.Current.Dispatcher.Invoke(() =>
-                                        {
-                                                if (Clipboard.GetText() == Password)
-                                                {
-                                                        Clipboard.Clear();
-                                                }
-                                        });
-                                });
+                                System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(30))
+                                    .ContinueWith(t =>
+                                    {
+                                            Application.Current.Dispatcher.Invoke(() =>
+                                            {
+                                                    if (Clipboard.GetText() == Password)
+                                                    {
+                                                            Clipboard.Clear();
+                                                    }
+                                            });
+                                    });
                         }
                         catch (Exception ex)
                         {
@@ -277,20 +243,9 @@ namespace PasswordManager.App.ViewModels
                         }
                 }
 
-                private void ExecuteDelete(object parameter)
+                private void ValidateInput()
                 {
-                        if (!_dialogService.ShowConfirmation("Are you sure you want to delete this password?"))
-                                return;
-
-                        try
-                        {
-                                _passwordRepository.Delete(_passwordId.Value);
-                                RequestClose?.Invoke(this, EventArgs.Empty);
-                        }
-                        catch (Exception ex)
-                        {
-                                _dialogService.ShowError("Failed to delete password: " + ex.Message);
-                        }
+                        ((RelayCommand)SaveCommand).RaiseCanExecuteChanged();
                 }
         }
 }

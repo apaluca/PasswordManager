@@ -15,9 +15,9 @@ using System.Windows.Shapes;
 
 namespace PasswordManager.App.Views
 {
-        public partial class DashboardView : UserControl
+        public partial class PasswordManagementView : UserControl
         {
-                public DashboardView()
+                public PasswordManagementView()
                 {
                         InitializeComponent();
                 }

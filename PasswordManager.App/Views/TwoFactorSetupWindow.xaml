@@ -1,0 +1,158 @@
+﻿<Window x:Class="PasswordManager.App.Views.TwoFactorSetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="Set Up Two-Factor Authentication" 
+        Height="623" 
+        Width="504"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="Set Up Two-Factor Authentication"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Margin="0,0,0,20"/>
+
+        <!-- Main Content -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,20">
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,20">
+                <Run Text="1. Install an authenticator app on your mobile device (like Google Authenticator or Microsoft Authenticator)."/>
+                <LineBreak/><LineBreak/>
+                <Run Text="2. Scan this QR code with your authenticator app:"/>
+            </TextBlock>
+
+            <!-- QR Code Container -->
+            <Border Background="White" 
+        BorderBrush="#CCCCCC" 
+        BorderThickness="1" 
+        Width="200" 
+        Height="200" 
+        Margin="0,0,0,20"
+        HorizontalAlignment="Left">
+                <Grid>
+                    <!-- Placeholder for design time -->
+                    <TextBlock Text="QR Code"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"/>
+
+                    <!-- Actual QR Code at runtime -->
+                    <Image x:Name="QrCodeImage"
+               Stretch="None"
+               RenderOptions.BitmapScalingMode="NearestNeighbor"
+               Source="{Binding QrCodeImage}">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding QrCodeUri}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+
+                    <!-- Loading indicator -->
+                    <TextBlock Text="Loading QR Code..."
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding QrCodeUri}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="Or enter this setup key manually:" 
+                       Margin="0,0,0,5"/>
+
+            <TextBox Text="{Binding SetupKey, Mode=OneWay}" 
+                     IsReadOnly="True"
+                     FontFamily="Consolas"
+                     FontSize="16"
+                     Padding="10"
+                     Margin="0,0,0,20"/>
+
+            <Button Content="Generate New Key" 
+                    Command="{Binding GenerateNewKeyCommand}"
+                    Width="150"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,0,20"/>
+
+            <TextBlock Text="3. Enter the verification code from your authenticator app:"
+                       Margin="0,0,0,5"/>
+
+            <DockPanel LastChildFill="True" Margin="0,0,0,5">
+                <TextBlock DockPanel.Dock="Right" 
+                          Text="{Binding RemainingSeconds, StringFormat={}({0}s)}"
+                          Margin="10,0,0,0"
+                          VerticalAlignment="Center"/>
+                <TextBox Text="{Binding VerificationCode, UpdateSourceTrigger=PropertyChanged}"
+                         MaxLength="6"
+                         FontFamily="Consolas"
+                         FontSize="20"
+                         Padding="10"
+                         CharacterCasing="Upper">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsVerified}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+            </DockPanel>
+
+            <!-- Success Message -->
+            <TextBlock Text="✓ Two-factor authentication has been enabled!"
+                       Foreground="Green"
+                       FontWeight="Bold"
+                       Margin="0,10,0,0"
+                       Visibility="{Binding IsVerified, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right">
+            <Button Content="Cancel"
+                    Width="100"
+                    Height="30"
+                    Margin="0,0,10,0"
+                    IsCancel="True"/>
+            <Button Content="Verify"
+                    Width="100"
+                    Height="30"
+                    Command="{Binding VerifyCommand}"
+                    IsDefault="True">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsVerified}" Value="True">
+                                <Setter Property="Content" Value="Done"/>
+                                <Setter Property="IsDefault" Value="True"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -11,6 +11,7 @@ namespace PasswordManager.Data.Repositories.Interfaces
         {
                 void RecordAttempt(string username, bool isSuccessful, string ipAddress, string userAgent);
                 int GetFailedAttempts(string username, TimeSpan window);
+                int GetFailedAttempts(int hours);
                 IEnumerable<LoginAttempt> GetRecentAttempts(int count);
         }
 }

@@ -1,4 +1,6 @@
-﻿using PasswordManager.App.Views;
+﻿using Microsoft.Extensions.DependencyInjection;
+using PasswordManager.App.ViewModels;
+using PasswordManager.App.Views;
 using PasswordManager.Core.Services.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -12,6 +14,12 @@ namespace PasswordManager.App.Services
         public class NavigationService : INavigationService
         {
                 public event EventHandler<NavigationEventArgs> Navigated;
+                private readonly IServiceProvider _serviceProvider;
+
+                public NavigationService(IServiceProvider serviceProvider)
+                {
+                        _serviceProvider = serviceProvider;
+                }
 
                 public void NavigateToMain()
                 {
@@ -31,7 +39,8 @@ namespace PasswordManager.App.Services
 
                 public void NavigateToLogin()
                 {
-                        var loginWindow = new LoginWindow();
+                        var loginViewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
+                        var loginWindow = new LoginWindow(loginViewModel);
                         var currentWindow = Application.Current.MainWindow;
 
                         Application.Current.MainWindow = loginWindow;

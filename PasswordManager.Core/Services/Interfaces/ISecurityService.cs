@@ -13,5 +13,8 @@ namespace PasswordManager.Core.Services.Interfaces
                 string GenerateStrongPassword(int length = 16);
                 string GenerateTwoFactorKey();
                 bool ValidateTwoFactorCode(string secretKey, string code);
+                string GetTwoFactorQrCodeUri(string secretKey, string username, string issuer = "PasswordManager");
+                string GenerateCurrentTotpCode(string secretKey);
+                int GetRemainingTotpSeconds();
         }
 }

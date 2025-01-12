@@ -1,25 +1,78 @@
 ﻿<Window x:Class="PasswordManager.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Password Manager" Height="450" Width="800"
+        xmlns:views="clr-namespace:PasswordManager.App.Views;assembly="
+        xmlns:viewmodels="clr-namespace:PasswordManager.App.ViewModels;assembly="
+        Title="Password Manager" 
+        Height="600" 
+        Width="1000"
         WindowStartupLocation="CenterScreen">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <DockPanel>
+        <!-- Top Bar -->
+        <Border DockPanel.Dock="Top" 
+                Background="#F0F0F0" 
+                Padding="10">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" 
+                        Content="Logout" 
+                        Command="{Binding LogoutCommand}"
+                        Width="80"/>
+                <TextBlock Text="{Binding WelcomeMessage}" 
+                          VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
 
-        <StackPanel Orientation="Horizontal" 
-                    Background="#F0F0F0" 
-                    Padding="10">
-            <TextBlock Text="{Binding WelcomeMessage}" 
-                       VerticalAlignment="Center"/>
-            <Button Content="Logout" 
-                    Command="{Binding LogoutCommand}"
-                    Margin="20,0,0,0"/>
-        </StackPanel>
+        <!-- Navigation Menu -->
+        <Border DockPanel.Dock="Left" 
+                Background="#E8E8E8" 
+                Width="200">
+            <StackPanel Margin="10">
+                <Button Content="Dashboard" 
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Dashboard"
+                        Height="30"
+                        Margin="0,5"/>
 
-        <ContentControl Grid.Row="1" 
-                       Content="{Binding CurrentView}"/>
-    </Grid>
+                <Button Content="Password Management" 
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="PasswordManagement"
+                        Height="30"
+                        Margin="0,5"/>
+
+                <!-- Admin-only buttons -->
+                <Button Content="User Management" 
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Dashboard"
+                        Height="30"
+                        Margin="0,5"
+                        Visibility="{Binding IsAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <!-- IT Specialist-only buttons -->
+                <Button Content="Security Monitoring" 
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Dashboard"
+                        Height="30"
+                        Margin="0,5"
+                        Visibility="{Binding IsITSpecialist, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <ContentControl Content="{Binding CurrentViewModel}">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type viewmodels:DashboardViewModel}">
+                    <views:DashboardView/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type viewmodels:AdminDashboardViewModel}">
+                    <views:AdminDashboardView/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type viewmodels:ITDashboardViewModel}">
+                    <views:ITDashboardView/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type viewmodels:PasswordManagementViewModel}">
+                    <views:PasswordManagementView/>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+    </DockPanel>
 </Window>

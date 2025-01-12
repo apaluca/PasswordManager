@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using PasswordManager.Core.Services;
+using PasswordManager.Data.DataContext;
 
 namespace PasswordManager.App.ViewModels
 {
@@ -18,6 +20,51 @@ namespace PasswordManager.App.ViewModels
                 private readonly ILoginAttemptRepository _loginAttemptRepository;
                 private readonly IDialogService _dialogService;
                 private readonly INavigationService _navigationService;
+
+                private string _username;
+                private string _password;
+                private string _twoFactorCode;
+                private bool _isTwoFactorRequired;
+                private User _currentUser;
+
+                public string Username
+                {
+                        get => _username;
+                        set
+                        {
+                                SetProperty(ref _username, value);
+                                ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
+                        }
+                }
+
+                public string Password
+                {
+                        get => _password;
+                        set
+                        {
+                                SetProperty(ref _password, value);
+                                ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
+                        }
+                }
+
+                public string TwoFactorCode
+                {
+                        get => _twoFactorCode;
+                        set
+                        {
+                                SetProperty(ref _twoFactorCode, value);
+                                ((RelayCommand)VerifyTwoFactorCommand).RaiseCanExecuteChanged();
+                        }
+                }
+
+                public bool IsTwoFactorRequired
+                {
+                        get => _isTwoFactorRequired;
+                        private set => SetProperty(ref _isTwoFactorRequired, value);
+                }
+
+                public ICommand LoginCommand { get; }
+                public ICommand VerifyTwoFactorCommand { get; }
 
                 public LoginViewModel(
                     IUserRepository userRepository,
@@ -33,48 +80,7 @@ namespace PasswordManager.App.ViewModels
                         _navigationService = navigationService;
 
                         LoginCommand = new RelayCommand(ExecuteLogin, CanExecuteLogin);
-                }
-
-                private string _username;
-                public string Username
-                {
-                        get { return _username; }
-                        set
-                        {
-                                if (SetProperty(ref _username, value))
-                                {
-                                        ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
-                                }
-                        }
-                }
-
-                private string _password;
-                public string Password
-                {
-                        get { return _password; }
-                        set
-                        {
-                                if (SetProperty(ref _password, value))
-                                {
-                                        ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
-                                }
-                        }
-                }
-
-                public ICommand LoginCommand { get; private set; }
-
-                public LoginViewModel(
-                    IUserRepository userRepository,
-                    ISecurityService securityService,
-                    ILoginAttemptRepository loginAttemptRepository,
-                    IDialogService dialogService)
-                {
-                        _userRepository = userRepository;
-                        _securityService = securityService;
-                        _loginAttemptRepository = loginAttemptRepository;
-                        _dialogService = dialogService;
-
-                        LoginCommand = new RelayCommand(ExecuteLogin, CanExecuteLogin);
+                        VerifyTwoFactorCommand = new RelayCommand(ExecuteVerifyTwoFactor, CanExecuteVerifyTwoFactor);
                 }
 
                 private bool CanExecuteLogin(object parameter)
@@ -91,40 +97,97 @@ namespace PasswordManager.App.ViewModels
                                 IsBusy = true;
                                 ClearError();
 
-                                Task.Factory.StartNew(() =>
+                                _currentUser = _userRepository.GetByUsername(Username);
+                                bool isValid = _currentUser != null &&
+                                             _securityService.VerifyPassword(Password, _currentUser.PasswordHash);
+
+                                if (!isValid)
                                 {
-                                        var user = _userRepository.GetByUsername(Username);
-                                        var isValid = user != null && _securityService.VerifyPassword(Password, user.PasswordHash);
+                                        _loginAttemptRepository.RecordAttempt(Username, false, "localhost", "WPF Client");
+                                        SetError("Invalid username or password");
+                                        IsBusy = false;
+                                        return;
+                                }
 
-                                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                        {
-                                                if (!isValid)
-                                                {
-                                                        _loginAttemptRepository.RecordAttempt(Username, false, "localhost", "WPF Client");
-                                                        SetError("Invalid username or password");
-                                                        return;
-                                                }
-
-                                                _loginAttemptRepository.RecordAttempt(Username, true, "localhost", "WPF Client");
-
-                                                // Store the user info in a session service or similar
-                                                SessionManager.CurrentUser = user;
-
-                                                // Navigate to main window
-                                                _navigationService.NavigateToMain();
-                                        });
-                                })
-                                .ContinueWith(t =>
+                                if (_currentUser.TwoFactorEnabled ?? false)
                                 {
-                                        if (t.Exception != null)
-                                        {
-                                                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                                {
-                                                        SetError("An error occurred during login");
-                                                        _dialogService.ShowError("Login failed. Please try again.");
-                                                });
-                                        }
-                                }, TaskContinuationOptions.OnlyOnFaulted);
+                                        IsTwoFactorRequired = true;
+                                        IsBusy = false;
+                                        return;
+                                }
+
+                                CompleteLogin();
+                        }
+                        catch (Exception ex)
+                        {
+                                SetError("An error occurred during login: " + ex.Message);
+                                IsBusy = false;
+                        }
+                }
+
+                private void CompleteLogin()
+                {
+                        try
+                        {
+                                _loginAttemptRepository.RecordAttempt(
+                                    Username,
+                                    true,
+                                    "localhost",
+                                    "WPF Client");
+
+                                _userRepository.SetLastLoginDate(_currentUser.UserId);
+
+                                SessionManager.CurrentUser = new Core.Models.UserModel
+                                {
+                                        UserId = _currentUser.UserId,
+                                        Username = _currentUser.Username,
+                                        Email = _currentUser.Email,
+                                        Role = _currentUser.Role.RoleName,
+                                        IsActive = _currentUser.IsActive ?? false,
+                                        LastLoginDate = _currentUser.LastLoginDate,
+                                        TwoFactorEnabled = _currentUser.TwoFactorEnabled ?? false
+                                };
+
+                                _navigationService.NavigateToMain();
+                        }
+                        finally
+                        {
+                                IsBusy = false;
+                        }
+                }
+
+                private bool CanExecuteVerifyTwoFactor(object parameter)
+                {
+                        return IsTwoFactorRequired &&
+                               !string.IsNullOrWhiteSpace(TwoFactorCode) &&
+                               TwoFactorCode.Length == 6 &&
+                               !IsBusy;
+                }
+
+                private void ExecuteVerifyTwoFactor(object parameter)
+                {
+                        try
+                        {
+                                IsBusy = true;
+                                ClearError();
+
+                                if (_securityService.ValidateTwoFactorCode(_currentUser.TwoFactorSecret, TwoFactorCode))
+                                {
+                                        CompleteLogin();
+                                }
+                                else
+                                {
+                                        _loginAttemptRepository.RecordAttempt(
+                                            Username,
+                                            false,
+                                            "localhost",
+                                            "WPF Client - 2FA Failed");
+                                        SetError("Invalid verification code");
+                                }
+                        }
+                        catch (Exception ex)
+                        {
+                                SetError("An error occurred during verification: " + ex.Message);
                         }
                         finally
                         {

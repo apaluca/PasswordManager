@@ -41,6 +41,14 @@ namespace PasswordManager.Data.Repositories
                                   la.AttemptDate >= cutoffTime);
                 }
 
+                public int GetFailedAttempts(int hours)
+                {
+                        var cutoffTime = DateTime.Now.AddHours(-hours);
+                        return _context.LoginAttempts.Count(
+                            la => !la.IsSuccessful &&
+                            la.AttemptDate >= cutoffTime);
+                }
+
                 public IEnumerable<LoginAttempt> GetRecentAttempts(int count)
                 {
                         return _context.LoginAttempts

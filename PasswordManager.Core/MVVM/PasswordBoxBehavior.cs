@@ -15,7 +15,10 @@ namespace PasswordManager.Core.MVVM
                         "Password",
                         typeof(string),
                         typeof(PasswordBoxBehavior),
-                        new PropertyMetadata(string.Empty, OnPasswordPropertyChanged));
+                        new FrameworkPropertyMetadata(string.Empty, OnPasswordPropertyChanged)
+                        {
+                                BindsTwoWayByDefault = true
+                        });
 
                 private static readonly DependencyProperty IsUpdatingProperty =
                     DependencyProperty.RegisterAttached(
@@ -33,44 +36,55 @@ namespace PasswordManager.Core.MVVM
                         return (string)dp.GetValue(PasswordProperty);
                 }
 
-                private static void SetIsUpdating(DependencyObject dp, bool value)
-                {
-                        dp.SetValue(IsUpdatingProperty, value);
-                }
-
                 private static bool GetIsUpdating(DependencyObject dp)
                 {
                         return (bool)dp.GetValue(IsUpdatingProperty);
                 }
 
+                private static void SetIsUpdating(DependencyObject dp, bool value)
+                {
+                        dp.SetValue(IsUpdatingProperty, value);
+                }
+
                 private static void OnPasswordPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
                 {
-                        PasswordBox passwordBox = sender as PasswordBox;
-                        if (passwordBox == null)
-                                return;
+                        if (sender is PasswordBox passwordBox)
+                        {
+                                passwordBox.PasswordChanged -= PasswordChanged;
 
-                        if (GetIsUpdating(passwordBox))
-                                return;
+                                if (!GetIsUpdating(passwordBox))
+                                {
+                                        passwordBox.Password = (string)e.NewValue;
+                                }
 
-                        passwordBox.PasswordChanged -= PasswordBox_PasswordChanged;
-                        passwordBox.Password = (string)e.NewValue;
-                        passwordBox.PasswordChanged += PasswordBox_PasswordChanged;
+                                passwordBox.PasswordChanged += PasswordChanged;
+                        }
                 }
 
-                public static void AttachBehavior(PasswordBox passwordBox)
+                private static void PasswordChanged(object sender, RoutedEventArgs e)
                 {
-                        passwordBox.PasswordChanged += PasswordBox_PasswordChanged;
+                        if (sender is PasswordBox passwordBox)
+                        {
+                                SetIsUpdating(passwordBox, true);
+                                SetPassword(passwordBox, passwordBox.Password);
+                                SetIsUpdating(passwordBox, false);
+                        }
                 }
 
-                private static void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+                public static void SetupBehavior(PasswordBox passwordBox)
                 {
-                        PasswordBox passwordBox = sender as PasswordBox;
-                        if (passwordBox == null)
-                                return;
+                        if (passwordBox != null)
+                        {
+                                passwordBox.PasswordChanged += PasswordChanged;
+                        }
+                }
 
-                        SetIsUpdating(passwordBox, true);
-                        SetPassword(passwordBox, passwordBox.Password);
-                        SetIsUpdating(passwordBox, false);
+                public static void CleanupBehavior(PasswordBox passwordBox)
+                {
+                        if (passwordBox != null)
+                        {
+                                passwordBox.PasswordChanged -= PasswordChanged;
+                        }
                 }
         }
 }

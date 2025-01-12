@@ -10,14 +10,13 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 namespace PasswordManager.App.Views
 {
-        public partial class DashboardView : UserControl
+        public partial class TwoFactorSetupWindow : Window
         {
-                public DashboardView()
+                public TwoFactorSetupWindow()
                 {
                         InitializeComponent();
                 }

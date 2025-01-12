@@ -112,5 +112,20 @@ namespace PasswordManager.Data.Repositories
                 {
                         return _context.Users.Any(u => u.Email == email);
                 }
+
+                public IEnumerable<User> GetUsers()
+                {
+                        return _context.Users.Where(u => u.IsActive.GetValueOrDefault());
+                }
+
+                public void UpdateUserStatus(int userId, bool isActive)
+                {
+                        var user = GetById(userId);
+                        if (user != null)
+                        {
+                                user.IsActive = isActive;
+                                _context.SubmitChanges();
+                        }
+                }
         }
 }

@@ -1,0 +1,44 @@
+﻿<Window x:Class="PasswordManager.App.Views.EncryptionKeyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="New Encryption Key" 
+        Height="200" 
+        Width="400"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" 
+                   Text="Copy this key and paste it into your App.config file:" 
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,10"/>
+
+        <TextBox Grid.Row="1"
+                 x:Name="KeyTextBox"
+                 Text="{Binding Key}"
+                 IsReadOnly="True"
+                 TextWrapping="Wrap"
+                 VerticalAlignment="Center"
+                 FontFamily="Consolas"/>
+
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Margin="0,10,0,0">
+            <Button Content="Copy to Clipboard" 
+                    Click="CopyButton_Click"
+                    Width="100" 
+                    Height="30" 
+                    Margin="0,0,10,0"/>
+            <Button Content="Close" 
+                    Click="CloseButton_Click"
+                    Width="100" 
+                    Height="30"
+                    IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -20,5 +20,7 @@ namespace PasswordManager.Data.Repositories.Interfaces
                 void SetLastLoginDate(int userId);
                 bool IsUsernameTaken(string username);
                 bool IsEmailTaken(string email);
+                IEnumerable<User> GetUsers();
+                void UpdateUserStatus(int userId, bool isActive);
         }
 }
