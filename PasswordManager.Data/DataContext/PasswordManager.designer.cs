@@ -1036,6 +1036,8 @@ namespace PasswordManager.Data.DataContext
 		
 		private System.Nullable<System.DateTime> _ModifiedDate;
 		
+		private System.Nullable<System.DateTime> _ExpirationDate;
+		
 		private EntityRef<User> _User;
 		
     #region Extensibility Method Definitions
@@ -1060,6 +1062,8 @@ namespace PasswordManager.Data.DataContext
     partial void OnCreatedDateChanged();
     partial void OnModifiedDateChanging(System.Nullable<System.DateTime> value);
     partial void OnModifiedDateChanged();
+    partial void OnExpirationDateChanging(System.Nullable<System.DateTime> value);
+    partial void OnExpirationDateChanged();
     #endregion
 		
 		public StoredPassword()
@@ -1248,6 +1252,26 @@ namespace PasswordManager.Data.DataContext
 					this._ModifiedDate = value;
 					this.SendPropertyChanged("ModifiedDate");
 					this.OnModifiedDateChanged();
+				}
+			}
+		}
+		
+		[global::System.Data.Linq.Mapping.ColumnAttribute(Storage="_ExpirationDate", DbType="DateTime")]
+		public System.Nullable<System.DateTime> ExpirationDate
+		{
+			get
+			{
+				return this._ExpirationDate;
+			}
+			set
+			{
+				if ((this._ExpirationDate != value))
+				{
+					this.OnExpirationDateChanging(value);
+					this.SendPropertyChanging();
+					this._ExpirationDate = value;
+					this.SendPropertyChanged("ExpirationDate");
+					this.OnExpirationDateChanged();
 				}
 			}
 		}

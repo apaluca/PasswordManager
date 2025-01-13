@@ -5,7 +5,6 @@ using PasswordManager.Core.MVVM;
 using PasswordManager.Core.Services.Interfaces;
 using PasswordManager.Core.Services;
 using PasswordManager.Data.Repositories.Interfaces;
-using PasswordManager.Data.Mappers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -102,21 +101,7 @@ namespace PasswordManager.App.ViewModels
                 {
                         try
                         {
-                                var passwords = _passwordRepository
-                                    .GetByUserId(SessionManager.CurrentUser.UserId)
-                                    .Select(p => new StoredPasswordModel
-                                    {
-                                            Id = p.Id,
-                                            UserId = p.UserId,
-                                            SiteName = p.SiteName,
-                                            SiteUrl = p.SiteUrl,
-                                            Username = p.Username,
-                                            EncryptedPassword = p.EncryptedPassword,
-                                            Notes = p.Notes,
-                                            ExpirationDate = p.CreatedDate?.AddMonths(3), // Example expiration logic
-                                            CreatedDate = p.CreatedDate,
-                                            ModifiedDate = p.ModifiedDate
-                                    });
+                                var passwords = _passwordRepository.GetByUserId(SessionManager.CurrentUser.UserId);
 
                                 Passwords.Clear();
                                 foreach (var password in passwords)
@@ -134,21 +119,7 @@ namespace PasswordManager.App.ViewModels
 
                 private void FilterPasswords()
                 {
-                        IEnumerable<StoredPasswordModel> filtered = _passwordRepository
-                            .GetByUserId(SessionManager.CurrentUser.UserId)
-                            .Select(p => new StoredPasswordModel
-                            {
-                                    Id = p.Id,
-                                    UserId = p.UserId,
-                                    SiteName = p.SiteName,
-                                    SiteUrl = p.SiteUrl,
-                                    Username = p.Username,
-                                    EncryptedPassword = p.EncryptedPassword,
-                                    Notes = p.Notes,
-                                    ExpirationDate = p.CreatedDate?.AddMonths(3),
-                                    CreatedDate = p.CreatedDate,
-                                    ModifiedDate = p.ModifiedDate
-                            });
+                        var filtered = _passwordRepository.GetByUserId(SessionManager.CurrentUser.UserId);
 
                         if (!string.IsNullOrWhiteSpace(SearchText))
                         {
@@ -161,9 +132,7 @@ namespace PasswordManager.App.ViewModels
 
                         if (ShowExpiredOnly)
                         {
-                                filtered = filtered.Where(p =>
-                                    p.ExpirationDate.HasValue &&
-                                    p.ExpirationDate.Value < DateTime.Now);
+                                filtered = filtered.Where(p => p.IsExpired);
                         }
 
                         Passwords.Clear();
@@ -197,6 +166,7 @@ namespace PasswordManager.App.ViewModels
                         viewModel.RequestClose += (s, e) =>
                         {
                                 window.DialogResult = true;
+                                window.Close();
                                 LoadPasswords();
                         };
 
@@ -226,6 +196,7 @@ namespace PasswordManager.App.ViewModels
                                 viewModel.RequestClose += (s, e) =>
                                 {
                                         window.DialogResult = true;
+                                        window.Close();
                                         LoadPasswords();
                                 };
 

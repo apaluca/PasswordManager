@@ -37,6 +37,7 @@ CREATE TABLE StoredPasswords (
     Notes NVARCHAR(MAX) NULL,
     CreatedDate DATETIME DEFAULT GETDATE(),
     ModifiedDate DATETIME DEFAULT GETDATE(),
+    ExpirationDate DATETIME NULL,
     FOREIGN KEY (UserId) REFERENCES Users(UserId)
 );
 

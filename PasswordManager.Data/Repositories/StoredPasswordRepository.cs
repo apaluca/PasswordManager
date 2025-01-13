@@ -1,7 +1,6 @@
 ﻿using PasswordManager.Core.Models;
 using PasswordManager.Core.Services.Interfaces;
 using PasswordManager.Data.DataContext;
-using PasswordManager.Data.Mappers;
 using PasswordManager.Data.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -25,22 +24,60 @@ namespace PasswordManager.Data.Repositories
                 public StoredPasswordModel GetById(int passwordId)
                 {
                         var entity = _context.StoredPasswords.FirstOrDefault(p => p.PasswordId == passwordId);
-                        return entity?.ToModel();
+                        if (entity == null) return null;
+
+                        return new StoredPasswordModel
+                        {
+                                Id = entity.PasswordId,
+                                UserId = entity.UserId,
+                                SiteName = entity.SiteName,
+                                SiteUrl = entity.SiteUrl,
+                                Username = entity.Username,
+                                EncryptedPassword = entity.EncryptedPassword,
+                                Notes = entity.Notes,
+                                CreatedDate = entity.CreatedDate,
+                                ModifiedDate = entity.ModifiedDate,
+                                ExpirationDate = entity.ExpirationDate
+                        };
                 }
 
                 public IEnumerable<StoredPasswordModel> GetByUserId(int userId)
                 {
                         return _context.StoredPasswords
                             .Where(p => p.UserId == userId)
-                            .Select(p => p.ToModel());
+                            .Select(p => new StoredPasswordModel
+                            {
+                                    Id = p.PasswordId,
+                                    UserId = p.UserId,
+                                    SiteName = p.SiteName,
+                                    SiteUrl = p.SiteUrl,
+                                    Username = p.Username,
+                                    EncryptedPassword = p.EncryptedPassword,
+                                    Notes = p.Notes,
+                                    CreatedDate = p.CreatedDate,
+                                    ModifiedDate = p.ModifiedDate,
+                                    ExpirationDate = p.ExpirationDate
+                            });
                 }
 
                 public void Create(StoredPasswordModel password)
                 {
-                        var entity = password.ToEntity();
+                        var entity = new StoredPassword
+                        {
+                                UserId = password.UserId,
+                                SiteName = password.SiteName,
+                                SiteUrl = password.SiteUrl,
+                                Username = password.Username,
+                                EncryptedPassword = password.EncryptedPassword,
+                                Notes = password.Notes,
+                                CreatedDate = DateTime.Now,
+                                ModifiedDate = DateTime.Now,
+                                ExpirationDate = password.ExpirationDate
+                        };
+
                         _context.StoredPasswords.InsertOnSubmit(entity);
                         _context.SubmitChanges();
-                        password.Id = entity.PasswordId; // Update the ID after insert
+                        password.Id = entity.PasswordId;
                 }
 
                 public void Update(StoredPasswordModel password)
@@ -53,8 +90,8 @@ namespace PasswordManager.Data.Repositories
                                 entity.Username = password.Username;
                                 entity.EncryptedPassword = password.EncryptedPassword;
                                 entity.Notes = password.Notes;
-                                entity.CreatedDate = password.ExpirationDate?.AddMonths(-3);
                                 entity.ModifiedDate = DateTime.Now;
+                                entity.ExpirationDate = password.ExpirationDate;
 
                                 _context.SubmitChanges();
                         }
@@ -77,7 +114,19 @@ namespace PasswordManager.Data.Repositories
                                 (p.SiteName.Contains(searchTerm) ||
                                  p.Username.Contains(searchTerm) ||
                                  p.SiteUrl.Contains(searchTerm)))
-                            .Select(p => p.ToModel());
+                            .Select(p => new StoredPasswordModel
+                            {
+                                    Id = p.PasswordId,
+                                    UserId = p.UserId,
+                                    SiteName = p.SiteName,
+                                    SiteUrl = p.SiteUrl,
+                                    Username = p.Username,
+                                    EncryptedPassword = p.EncryptedPassword,
+                                    Notes = p.Notes,
+                                    CreatedDate = p.CreatedDate,
+                                    ModifiedDate = p.ModifiedDate,
+                                    ExpirationDate = p.ExpirationDate
+                            });
                 }
         }
 }

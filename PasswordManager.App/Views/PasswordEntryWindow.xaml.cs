@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PasswordManager.App.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,5 +21,19 @@ namespace PasswordManager.App.Views
                 {
                         InitializeComponent();
                 }
+
+                private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+                {
+                        if (DataContext is PasswordEntryViewModel viewModel && sender is PasswordBox passwordBox)
+                        {
+                                viewModel.Password = passwordBox.Password;
+                        }
+                }
+
+                private void Window_Loaded(object sender, RoutedEventArgs e)
+                {
+                        PasswordBoxControl.Password = (DataContext as PasswordEntryViewModel)?.Password;
+                }
+
         }
 }
